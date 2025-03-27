@@ -1,6 +1,7 @@
-using FinalProject_Back_end.Models;
+using MarketplaceAPI.Models;
 using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using MarketplaceAPI.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 

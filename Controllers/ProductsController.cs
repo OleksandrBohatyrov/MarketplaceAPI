@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 
-namespace FinalProject_Back_end.Controllers
+namespace MarketplaceAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]

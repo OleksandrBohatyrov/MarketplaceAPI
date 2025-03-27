@@ -1,9 +1,10 @@
-﻿using FinalProject_Back_end.Models;
+﻿using MarketplaceAPI.Models;
+using MarketplaceAPI.Data;
 using Microsoft.AspNetCore.Mvc;
 using BCrypt.Net;
 using Org.BouncyCastle.Crypto.Generators;
 
-namespace FinalProject_Back_end.Controllers
+namespace MarketplaceAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
