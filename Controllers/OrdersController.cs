@@ -1,4 +1,5 @@
 ﻿using MarketplaceAPI.Data;
+using MarketplaceAPI.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -32,6 +33,33 @@ namespace MarketplaceAPI.Controllers
                 var orders = _db.Orders.Where(o => o.BuyerId == currentUserId).ToList();
                 return Ok(orders);
             }
+        }
+        [HttpGet("{id}")]
+        public IActionResult GetOrder(int id)
+        {
+            var order = _db.Orders.FirstOrDefault(o => o.Id == id);
+            if (order == null)
+                return NotFound(new { message = "Order not found" });
+
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (order.BuyerId != currentUserId && !User.IsInRole("Admin"))
+                return Forbid();
+
+            return Ok(order);
+        }
+
+        [HttpPost]
+        public IActionResult CreateOrder([FromBody] Order order)
+        {
+            if (order == null)
+                return BadRequest(new { message = "Incorrect order data" });
+
+            order.BuyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            order.OrderDate = DateTime.UtcNow;
+            _db.Orders.Add(order);
+            _db.SaveChanges();
+
+            return Ok(order);
         }
 
     }
