@@ -25,5 +25,23 @@ namespace MarketplaceAPI.Controllers
             var users = _userManager.Users;
             return Ok(users);
         }
+
+        // Assing user role
+        [HttpPost("assignRole")]
+        public async Task<IActionResult> AssignRole(string userId, string role)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return NotFound("User not found");
+
+            if (!await _roleManager.RoleExistsAsync(role))
+                return NotFound("Role not ofund");
+
+            var result = await _userManager.AddToRoleAsync(user, role);
+            if (result.Succeeded)
+                return Ok($"Role {role} aassigned to user {user.UserName}");
+
+            return BadRequest(result.Errors);
+        }
     }
 }
