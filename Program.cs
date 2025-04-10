@@ -1,29 +1,104 @@
-using MarketplaceAPI.Data;
-using MarketplaceAPI.Models;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using MarketplaceAPI.Data; 
 
 var builder = WebApplication.CreateBuilder(args);
 
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
-    ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))));
+    options.UseMySql(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        new MySqlServerVersion(new Version(8, 0, 28)),
+        mySqlOptions => mySqlOptions.EnableRetryOnFailure()
+    ));
 
-
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+// Settings Identity
+builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
 {
-    options.Password.RequireDigit = true;
+    options.Password.RequireDigit = false;
     options.Password.RequiredLength = 6;
-    options.Password.RequireNonAlphanumeric = false;
-    options.Password.RequireUppercase = true;
     options.Password.RequireLowercase = false;
+    options.Password.RequireUppercase = false;
+    options.Password.RequireNonAlphanumeric = false;
 })
-    .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddDefaultTokenProviders();
+.AddEntityFrameworkStores<ApplicationDbContext>()
+.AddDefaultTokenProviders();
 
-builder.Services.AddAuthentication();
-builder.Services.AddControllers();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000")
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
+    });
+});
+
+// Set cookies
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Cookie.Name = "access_token";
+   // options.Cookie.Domain = ".abkillio.xyz";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.None;
+    options.ExpireTimeSpan = TimeSpan.FromDays(7);
+});
+
+builder.Services.Configure<CookiePolicyOptions>(opts =>
+{
+    opts.MinimumSameSitePolicy = SameSiteMode.None;
+});
+
+//  JWT
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var secretKey = jwtSettings["SecretKey"];
+var key = Encoding.ASCII.GetBytes(secretKey);
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ValidateIssuer = false,
+        ValidateAudience = false,
+        ClockSkew = TimeSpan.Zero
+    };
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var token = context.Request.Cookies["access_token"];
+            if (!string.IsNullOrEmpty(token))
+            {
+                context.Token = token;
+            }
+            return Task.CompletedTask;
+        }
+    };
+});
+
+builder.Services.AddControllers(options =>
+{
+    var policy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+    options.Filters.Add(new AuthorizeFilter(policy));
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -31,32 +106,45 @@ var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    context.Database.Migrate();
 
-    var roles = new[] { "Admin", "User" };
-    foreach (var role in roles)
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+
+    const string adminRole = "Admin";
+    if (!await roleManager.RoleExistsAsync(adminRole))
     {
-        if (!roleManager.RoleExistsAsync(role).Result)
+        var roleResult = await roleManager.CreateAsync(new IdentityRole(adminRole));
+        if (!roleResult.Succeeded)
         {
-            roleManager.CreateAsync(new IdentityRole(role)).Wait();
+            var errors = string.Join(", ", roleResult.Errors.Select(e => e.Description));
+            throw new Exception("Failed to create admin role: " + errors);
         }
     }
 
-    // added admin
-    var adminEmail = "admin@example.com";
-    var adminUser = userManager.FindByEmailAsync(adminEmail).Result;
+    var adminEmail = builder.Configuration["AdminCredentials:Email"];
+    var adminPassword = builder.Configuration["AdminCredentials:Password"];
+
+    var adminUser = await userManager.FindByEmailAsync(adminEmail);
     if (adminUser == null)
     {
-        adminUser = new ApplicationUser
+        adminUser = new IdentityUser { UserName = adminEmail, Email = adminEmail, EmailConfirmed = true };
+        var result = await userManager.CreateAsync(adminUser, adminPassword);
+        if (!result.Succeeded)
         {
-            UserName = "admin",
-            Email = adminEmail,
-        };
-        var result = userManager.CreateAsync(adminUser, "Admin123!").Result;
-        if (result.Succeeded)
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            throw new Exception("Failed to create admin user: " + errors);
+        }
+    }
+
+    if (!await userManager.IsInRoleAsync(adminUser, adminRole))
+    {
+        var addToRoleResult = await userManager.AddToRoleAsync(adminUser, adminRole);
+        if (!addToRoleResult.Succeeded)
         {
-            userManager.AddToRoleAsync(adminUser, "Admin").Wait();
+            var errors = string.Join(", ", addToRoleResult.Errors.Select(e => e.Description));
+            throw new Exception("Failed to add admin user to role: " + errors);
         }
     }
 }
@@ -67,8 +155,26 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseDeveloperExceptionPage();
 app.UseHttpsRedirection();
 
+app.UseCors("AllowFrontend");
+
+app.Use(async (context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        Console.WriteLine("Response Headers:");
+        foreach (var header in context.Response.Headers)
+        {
+            Console.WriteLine($"{header.Key}: {header.Value}");
+        }
+        return Task.CompletedTask;
+    });
+    await next();
+});
+
+app.UseCookiePolicy();
 app.UseAuthentication();
 app.UseAuthorization();
 
