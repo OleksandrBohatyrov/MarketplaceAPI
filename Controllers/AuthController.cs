@@ -3,6 +3,7 @@ using MarketplaceAPI.Data;
 using Microsoft.AspNetCore.Mvc;
 using BCrypt.Net;
 using Org.BouncyCastle.Crypto.Generators;
+using Microsoft.AspNetCore.Identity;
 
 namespace MarketplaceAPI.Controllers
 {
@@ -10,40 +11,39 @@ namespace MarketplaceAPI.Controllers
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly ApplicationDbContext _db;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
 
-        public AuthController(ApplicationDbContext db)
+        public AuthController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager)
         {
-            _db = db;
+            _userManager = userManager;
+            _signInManager = signInManager;
         }
 
         [HttpPost("register")]
-        public IActionResult Register([FromBody] RegisterModel model)
+        public async Task<IActionResult> Register([FromBody] RegisterModel model)
         {
-            if (_db.Users.Any(u => u.Email == model.Email))
-                return BadRequest("Email already exists");
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
             var user = new ApplicationUser
             {
                 UserName = model.Username,
                 Email = model.Email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password)
+                FullName = model.Username 
             };
 
-            _db.Users.Add(user);
-            _db.SaveChanges();
+            var result = await _userManager.CreateAsync(user, model.Password);
+            if (result.Succeeded)
+            {
+                // set role user as a default
+                await _userManager.AddToRoleAsync(user, "User");
+                return Ok("User succesfully registered");
+            }
 
-            return Ok("User registered successfully");
+            return BadRequest(result.Errors);
         }
 
-        [HttpPost("login")]
-        public IActionResult Login([FromBody] LoginModel model)
-        {
-            var user = _db.Users.FirstOrDefault(u => u.Email == model.Email);
-            if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
-                return Unauthorized("Invalid email or password");
 
-            return Ok("Login successful");
-        }
     }
 }
