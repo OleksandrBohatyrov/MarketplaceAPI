@@ -1,4 +1,4 @@
-﻿namespace FinalProject_Back_end.Models
+﻿namespace MarketplaceAPI.Models
 {
     public class LoginModel
     {

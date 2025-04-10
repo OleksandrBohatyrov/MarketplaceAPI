@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 
-namespace FinalProject_Back_end.Models
+namespace MarketplaceAPI.Models
 {
     public class Transaction
     {

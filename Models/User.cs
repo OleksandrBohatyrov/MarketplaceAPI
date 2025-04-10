@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace FinalProject_Back_end.Models
+namespace MarketplaceAPI.Models
 {
     public class User
     {
