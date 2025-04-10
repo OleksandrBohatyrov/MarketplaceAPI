@@ -44,6 +44,23 @@ namespace MarketplaceAPI.Controllers
             return BadRequest(result.Errors);
         }
 
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginModel model)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var user = await _userManager.FindByEmailAsync(model.Email);
+            if (user == null)
+                return Unauthorized("Incorrect email or password");
+
+            var result = await _signInManager.PasswordSignInAsync(user.UserName, model.Password, isPersistent: false, lockoutOnFailure: false);
+            if (result.Succeeded)
+                return Ok("Login successful");
+
+            return Unauthorized("Incorrect email or password");
+        }
+
 
     }
 }
