@@ -12,7 +12,7 @@ namespace MarketplaceAPI.Models
         [Required]
         public DateTime OrderDate { get; set; }
         [ForeignKey("BuyerId")]
-        public User Buyer { get; set; }
+        public ApplicationUser Buyer { get; set; }
         [ForeignKey("ProductId")]
         public Product Product { get; set; }
     }

@@ -23,9 +23,9 @@ namespace MarketplaceAPI.Controllers
             if (_db.Users.Any(u => u.Email == model.Email))
                 return BadRequest("Email already exists");
 
-            var user = new User
+            var user = new ApplicationUser
             {
-                Username = model.Username,
+                UserName = model.Username,
                 Email = model.Email,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password)
             };

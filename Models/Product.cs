@@ -20,7 +20,7 @@ namespace MarketplaceAPI.Models
         public int SellerId { get; set; }
 
         [ForeignKey("SellerId")]
-        public User Seller { get; set; }
+        public ApplicationUser Seller { get; set; }
 
         public int CategoryId { get; set; }
 
