@@ -1,5 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MarketplaceAPI.Models
 {
@@ -17,7 +17,7 @@ namespace MarketplaceAPI.Models
         [Required]
         public decimal Price { get; set; }
 
-        public int SellerId { get; set; }
+        public string SellerId { get; set; }
 
         [ForeignKey("SellerId")]
         public ApplicationUser Seller { get; set; }
