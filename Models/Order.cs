@@ -1,5 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MarketplaceAPI.Models
 {
@@ -7,12 +7,17 @@ namespace MarketplaceAPI.Models
     {
         [Key]
         public int Id { get; set; }
-        public int BuyerId { get; set; }
+
+        public string BuyerId { get; set; }
+
         public int ProductId { get; set; }
+
         [Required]
         public DateTime OrderDate { get; set; }
+
         [ForeignKey("BuyerId")]
-        public User Buyer { get; set; }
+        public ApplicationUser Buyer { get; set; }
+
         [ForeignKey("ProductId")]
         public Product Product { get; set; }
     }
