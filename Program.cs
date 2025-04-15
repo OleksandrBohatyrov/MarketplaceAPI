@@ -134,6 +134,7 @@ using (var scope = app.Services.CreateScope())
             Email = adminEmail,
             EmailConfirmed = true,
             FullName = "Admin" 
+
         };
         var result = await userManager.CreateAsync(adminUser, adminPassword);
         if (!result.Succeeded)
