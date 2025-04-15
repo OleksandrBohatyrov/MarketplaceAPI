@@ -1,7 +1,6 @@
 ﻿using FinalProject_Back_end.Models;
 using Microsoft.AspNetCore.Mvc;
 using BCrypt.Net;
-using Org.BouncyCastle.Crypto.Generators;
 
 namespace FinalProject_Back_end.Controllers
 {
