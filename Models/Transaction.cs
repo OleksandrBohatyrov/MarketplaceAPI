@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 
-namespace FinalProject_Back_end.Models
+namespace MarketplaceAPI.Models
 {
     public class Transaction
     {
@@ -10,7 +10,7 @@ namespace FinalProject_Back_end.Models
         public int OrderId { get; set; }
         [Required]
         public decimal Amount { get; set; }
-        public string Status { get; set; } // "Pending", "Completed", "Failed"
+        public string Status { get; set; } 
         [ForeignKey("OrderId")]
         public Order Order { get; set; }
     }
