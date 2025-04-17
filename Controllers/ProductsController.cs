@@ -61,7 +61,7 @@ namespace MarketplaceAPI.Controllers
                 Description = dto.Description,
                 Price = dto.Price,
                 CategoryId = dto.CategoryId,
-                SellerId = userId  
+                SellerId = userId   
             };
 
             _db.Products.Add(product);

@@ -104,6 +104,21 @@ namespace MarketplaceAPI.Controllers
 
             return Ok("Login successful");
         }
+
+        [Authorize]
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            await _signInManager.SignOutAsync();
+
+          
+            if (Request.Cookies.ContainsKey("access_token"))
+            {
+                Response.Cookies.Delete("access_token");
+            }
+
+            return Ok(new { message = "Logged out successfully" });
+        }
     }
 
 }
