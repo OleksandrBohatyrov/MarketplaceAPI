@@ -45,7 +45,7 @@ namespace MarketplaceAPI.Controllers
         }
 
 
-        [HttpPost]//вфывфыывczczc
+        [HttpPost]  
         public IActionResult CreateProduct([FromBody] Product product)
         {
             if (!ModelState.IsValid)
