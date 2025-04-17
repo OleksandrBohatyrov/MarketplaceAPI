@@ -10,6 +10,7 @@ namespace MarketplaceAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class ProductsController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
@@ -46,16 +47,25 @@ namespace MarketplaceAPI.Controllers
 
 
         [HttpPost]
-        [Authorize]
-        public IActionResult CreateProduct([FromBody] Product product)
+        public IActionResult CreateProduct([FromBody] CreateProductDto dto)
         {
-            if (product == null)
-                return BadRequest(new { message = "Incorrect product data" });
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
-            product.SellerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            // Получаем текущего пользователя
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+
+            var product = new Product
+            {
+                Name = dto.Name,
+                Description = dto.Description,
+                Price = dto.Price,
+                CategoryId = dto.CategoryId,
+                SellerId = userId   
+            };
+
             _db.Products.Add(product);
             _db.SaveChanges();
-
             return Ok(product);
         }
 

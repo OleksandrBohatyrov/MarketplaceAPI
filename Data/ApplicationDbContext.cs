@@ -15,5 +15,6 @@ namespace MarketplaceAPI.Data
         public DbSet<Category> Categories { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<Transaction> Transactions { get; set; }
+        public DbSet<CartItem> CartItems { get; set; }
     }
 }
