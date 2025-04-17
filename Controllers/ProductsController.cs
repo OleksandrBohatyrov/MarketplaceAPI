@@ -45,17 +45,17 @@ namespace MarketplaceAPI.Controllers
         }
 
 
-        [HttpPost]
-        [Authorize]
+        [HttpPost]//вфывфыывczczc
         public IActionResult CreateProduct([FromBody] Product product)
         {
-            if (product == null)
-                return BadRequest(new { message = "Incorrect product data" });
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
-            product.SellerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            product.SellerId = userId;
+
             _db.Products.Add(product);
             _db.SaveChanges();
-
             return Ok(product);
         }
 
