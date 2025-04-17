@@ -54,56 +54,53 @@ namespace MarketplaceAPI.Controllers
         public async Task<IActionResult> Login([FromBody] LoginModel model)
         {
             if (!ModelState.IsValid)
-            {
-                Console.WriteLine("Model state invalid: " + string.Join(", ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)));
                 return BadRequest(ModelState);
-            }
 
             var user = await _userManager.FindByEmailAsync(model.Email);
-            if (user == null)
-            {
-                Console.WriteLine($"User not found for email: {model.Email}");
+            if (user == null || !await _userManager.CheckPasswordAsync(user, model.Password))
                 return Unauthorized("Incorrect email or password");
-            }
 
-            var passwordValid = await _userManager.CheckPasswordAsync(user, model.Password);
-            if (!passwordValid)
-            {
-                Console.WriteLine($"Password validation failed for user: {model.Email}");
-                return Unauthorized("Incorrect email or password");
-            }
+            var roles = await _userManager.GetRolesAsync(user);
 
-            //  JWT token
-            var jwtSettings = HttpContext.RequestServices.GetService<IConfiguration>().GetSection("JwtSettings");
-            var secretKey = jwtSettings["SecretKey"];
-            var key = Encoding.ASCII.GetBytes(secretKey);
+            var claims = new List<Claim>
+    {
+        new Claim(ClaimTypes.NameIdentifier, user.Id),
+        new Claim(ClaimTypes.Email, user.Email)
+    };
+            claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
 
-            var tokenHandler = new JwtSecurityTokenHandler();
+            // create JWT
+            var jwtSettings = HttpContext.RequestServices
+                                 .GetRequiredService<IConfiguration>()
+                                 .GetSection("JwtSettings");
+            var key = Encoding.ASCII.GetBytes(jwtSettings["SecretKey"]!);
+
             var tokenDescriptor = new SecurityTokenDescriptor
             {
-                Subject = new ClaimsIdentity(new[]
-                {
-            new Claim(ClaimTypes.NameIdentifier, user.Id),
-            new Claim(ClaimTypes.Email, user.Email)
-        }),
+                Subject = new ClaimsIdentity(claims),
                 Expires = DateTime.UtcNow.AddDays(7),
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+                SigningCredentials = new SigningCredentials(
+                    new SymmetricSecurityKey(key),
+                    SecurityAlgorithms.HmacSha256Signature)
             };
+
+            var tokenHandler = new JwtSecurityTokenHandler();
             var token = tokenHandler.CreateToken(tokenDescriptor);
             var tokenString = tokenHandler.WriteToken(token);
 
-            Console.WriteLine($"JWT token generated: {tokenString}");
-
+            // set it into a cookie
             Response.Cookies.Append("access_token", tokenString, new CookieOptions
             {
                 HttpOnly = true,
                 Secure = true,
                 SameSite = SameSiteMode.None,
-                Expires = DateTime.UtcNow.AddDays(7)
+                Expires = DateTime.UtcNow.AddDays(7),
+                Path = "/"
             });
 
             return Ok("Login successful");
         }
+
 
         [Authorize]
         [HttpPost("logout")]
