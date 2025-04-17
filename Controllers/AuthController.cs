@@ -98,7 +98,7 @@ namespace MarketplaceAPI.Controllers
                 Path = "/"
             });
 
-            return Ok("Login successful");
+            return Ok(new { message = "Login successful" });
         }
 
 
@@ -111,7 +111,10 @@ namespace MarketplaceAPI.Controllers
           
             if (Request.Cookies.ContainsKey("access_token"))
             {
-                Response.Cookies.Delete("access_token");
+                Response.Cookies.Delete("access_token", new CookieOptions
+                {
+                    Path = "/"            
+                });
             }
 
             return Ok(new { message = "Logged out successfully" });
