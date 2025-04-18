@@ -21,13 +21,32 @@ namespace MarketplaceAPI.Controllers
         [HttpGet("me")]
         public async Task<IActionResult> GetCurrentUser()
         {
+            // получаем id из токена
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null)
+                return Unauthorized();
+
+            // достаем самого пользователя
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
                 return NotFound("User not found");
 
-            return Ok(user);
+            // получаем список ролей
+            var roles = await _userManager.GetRolesAsync(user);
+
+            // формируем DTO
+            var result = new
+            {
+                id = user.Id,
+                fullName = user.FullName,
+                userName = user.UserName,
+                email = user.Email,
+                roles = roles
+            };
+
+            return Ok(result);
         }
-    }
+    
+}
 
 }
