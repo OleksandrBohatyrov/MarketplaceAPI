@@ -108,17 +108,19 @@ namespace MarketplaceAPI.Controllers
         {
             await _signInManager.SignOutAsync();
 
-          
-            if (Request.Cookies.ContainsKey("access_token"))
-            {
-                Response.Cookies.Delete("access_token", new CookieOptions
+            Response.Cookies.Append("access_token", "",
+                new CookieOptions
                 {
-                    Path = "/"            
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.None,
+                    Path = "/",
+                    Expires = DateTime.UtcNow.AddDays(-1)
                 });
-            }
 
             return Ok(new { message = "Logged out successfully" });
         }
+
     }
 
 }
