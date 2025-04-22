@@ -4,7 +4,7 @@ namespace MarketplaceAPI.Models
 {
     public class Category
     {
-        [Key]//вфывфыывczczc
+        [Key]
         public int Id { get; set; }
 
         [Required]
