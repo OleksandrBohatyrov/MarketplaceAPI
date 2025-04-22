@@ -10,7 +10,7 @@ namespace MarketplaceAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+    [AllowAnonymous]
     public class ProductsController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
