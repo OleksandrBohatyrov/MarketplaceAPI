@@ -1,4 +1,5 @@
-﻿using MarketplaceAPI.Models;
+﻿using MarketplaceAPI.Data;
+using MarketplaceAPI.Models;      
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +10,6 @@ namespace MarketplaceAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
     public class UsersController : ControllerBase
     {
         private readonly UserManager<ApplicationUser> _userManager;
@@ -18,35 +18,30 @@ namespace MarketplaceAPI.Controllers
         {
             _userManager = userManager;
         }
+
+        // GET /api/users/me
         [HttpGet("me")]
-        public async Task<IActionResult> GetCurrentUser()
+        [Authorize]
+        public async Task<IActionResult> GetMe()
         {
-            // получаем id из токена
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null)
+            if (string.IsNullOrEmpty(userId))
                 return Unauthorized();
 
-            // достаем самого пользователя
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
-                return NotFound("User not found");
+                return Unauthorized();
 
-            // получаем список ролей
+
             var roles = await _userManager.GetRolesAsync(user);
 
-            // формируем DTO
-            var result = new
+            return Ok(new
             {
                 id = user.Id,
-                fullName = user.FullName,
-                userName = user.UserName,
+                username = user.UserName,
                 email = user.Email,
                 roles = roles
-            };
-
-            return Ok(result);
+            });
         }
-    
-}
-
+    }
 }

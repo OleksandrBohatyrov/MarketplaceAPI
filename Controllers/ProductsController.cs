@@ -40,20 +40,23 @@ namespace MarketplaceAPI.Controllers
                              .Include(p => p.Seller)
                              .FirstOrDefault(p => p.Id == id);
             if (product == null)
-                return NotFound(new { message = "Товар не найден" });
+                return NotFound(new { message = "Item not found" });
 
             return Ok(product);
         }
 
 
         [HttpPost]
-        public IActionResult CreateProduct([FromBody] CreateProductDto dto)
+        [Authorize]
+        public IActionResult CreateProduct([FromBody] ProductDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            if (dto == null || string.IsNullOrWhiteSpace(dto.Name))
+                return BadRequest(new { message = "Incorrect product data" });
 
-            // Получаем текущего пользователя
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
 
             var product = new Product
             {
@@ -61,16 +64,19 @@ namespace MarketplaceAPI.Controllers
                 Description = dto.Description,
                 Price = dto.Price,
                 CategoryId = dto.CategoryId,
-                SellerId = userId   
+                SellerId = userId.ToString(),
+                CreatedAt = DateTime.UtcNow
             };
 
             _db.Products.Add(product);
             _db.SaveChanges();
+
             return Ok(product);
         }
+    
 
 
-        [HttpPut("{id}")]
+    [HttpPut("{id}")]
         [Authorize]
         public IActionResult UpdateProduct(int id, [FromBody] Product updatedProduct)
         {
@@ -113,5 +119,12 @@ namespace MarketplaceAPI.Controllers
 
             return Ok(new { message = "The item has been successfully removed" });
         }
+    public class ProductDto
+    {
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public decimal Price { get; set; }
+        public int CategoryId { get; set; }
     }
+}
 }
