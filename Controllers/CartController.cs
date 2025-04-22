@@ -36,6 +36,17 @@ namespace MarketplaceAPI.Controllers
             return Ok(items);
         }
 
+        // GET /api/cart/count
+        [HttpGet("count")]
+        public async Task<IActionResult> GetCount()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            var total = await _db.CartItems
+                .Where(ci => ci.UserId == userId)
+                .SumAsync(ci => ci.Quantity);
+            return Ok(new { count = total });
+        }
+
         // POST /api/cart/add/{productId}
         [HttpPost("add/{productId}")]
         public async Task<IActionResult> AddToCart(int productId)
@@ -44,7 +55,7 @@ namespace MarketplaceAPI.Controllers
             var product = await _db.Products.FindAsync(productId);
             if (product == null) return NotFound("Product not found");
             if (product.SellerId.ToString() == userId)
-                return BadRequest("Нельзя добавить свой товар в корзину");
+                return BadRequest("You can't add your item to the basket");
 
             var existing = await _db.CartItems
                 .FirstOrDefaultAsync(ci => ci.UserId == userId && ci.ProductId == productId);
@@ -60,7 +71,7 @@ namespace MarketplaceAPI.Controllers
                 });
 
             await _db.SaveChangesAsync();
-            return Ok("Добавлено в корзину");
+            return Ok("Added to cart");
         }
 
         // DELETE /api/cart/{cartItemId}
@@ -74,7 +85,7 @@ namespace MarketplaceAPI.Controllers
 
             _db.CartItems.Remove(item);
             await _db.SaveChangesAsync();
-            return Ok("Удалено из корзины");
+            return Ok("Removed form cart");
         }
     }
 }
