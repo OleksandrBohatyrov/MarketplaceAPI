@@ -1,5 +1,6 @@
 using System.Text;
 using Stripe;
+using MarketplaceAPI.Models;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -9,10 +10,13 @@ using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MarketplaceAPI.Data;
-using MarketplaceAPI.Models;
 
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Stripe"));
+builder.Services.AddSingleton(sp =>
+    sp.GetRequiredService<IOptions<StripeSettings>>().Value);
+
 
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -108,7 +112,8 @@ builder.Services.AddControllers(options =>
 });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
+var stripeOptions = builder.Configuration.GetSection("Stripe").Get<StripeSettings>();
+StripeConfiguration.ApiKey = stripeOptions.SecretKey;
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
