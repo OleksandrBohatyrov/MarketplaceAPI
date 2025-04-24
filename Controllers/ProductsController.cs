@@ -35,14 +35,31 @@ namespace MarketplaceAPI.Controllers
         [HttpGet("{id}")]
         public IActionResult GetProduct(int id)
         {
-            var product = _db.Products
-                             .Include(p => p.Category)
-                             .Include(p => p.Seller)
-                             .FirstOrDefault(p => p.Id == id);
-            if (product == null)
+            var p = _db.Products
+                .Include(x => x.Category)
+                .Include(x => x.Seller)
+                .Include(x => x.ProductTags)
+                    .ThenInclude(pt => pt.Tag)
+                .FirstOrDefault(x => x.Id == id);
+
+            if (p == null)
                 return NotFound(new { message = "Item not found" });
 
-            return Ok(product);
+            var dto = new ProductResponseDto
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Description = p.Description,
+                Price = p.Price,
+                Category = new CategoryDto { Id = p.Category.Id, Name = p.Category.Name },
+                Seller = new UserDto { Id = p.Seller.Id, UserName = p.Seller.UserName },
+                Tags = p.ProductTags
+                        .Select(pt => new TagDto { Id = pt.Tag.Id, Name = pt.Tag.Name })
+                        .ToList(),
+                CreatedAt = p.CreatedAt
+            };
+
+            return Ok(dto);
         }
 
 
