@@ -42,7 +42,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:3000")
+        policy.WithOrigins("https://riidedstock.ee")
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
@@ -54,7 +54,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.Name = "access_token";
     options.Cookie.Path = "/";
-    // options.Cookie.Domain = ".abkillio.xyz";
+     options.Cookie.Domain = ".riidedstock.ee";
     options.Cookie.HttpOnly = true;
     options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     options.Cookie.SameSite = SameSiteMode.None;
