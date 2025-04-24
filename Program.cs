@@ -135,6 +135,11 @@ using (var scope = app.Services.CreateScope())
         }
     }
 
+    if (!await roleManager.RoleExistsAsync("User"))
+    {
+        await roleManager.CreateAsync(new IdentityRole("User"));
+    }
+
     var adminEmail = builder.Configuration["AdminCredentials:Email"];
     var adminPassword = builder.Configuration["AdminCredentials:Password"];
 
