@@ -119,7 +119,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    context.Database.Migrate();
+    //context.Database.Migrate();
 
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>(); 
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
