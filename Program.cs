@@ -42,7 +42,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("https://riidedstock.ee")
+        policy.WithOrigins("https://riidedstock.ee", "https://www.riidedstock.ee")
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
