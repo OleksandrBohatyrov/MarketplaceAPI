@@ -30,6 +30,6 @@ namespace MarketplaceAPI.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public ICollection<ProductTag> ProductTags { get; set; }
-        = new List<ProductTag>();
+       = new List<ProductTag>();
     }
 }
