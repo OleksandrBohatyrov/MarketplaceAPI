@@ -28,5 +28,8 @@ namespace MarketplaceAPI.Models
         public Category Category { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public ICollection<ProductTag> ProductTags { get; set; }
+       = new List<ProductTag>();
     }
 }

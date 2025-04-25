@@ -11,13 +11,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MarketplaceAPI.Data;
 
-
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Stripe"));
 builder.Services.AddSingleton(sp =>
     sp.GetRequiredService<IOptions<StripeSettings>>().Value);
-
-
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseMySql(
@@ -54,11 +51,9 @@ builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.Name = "access_token";
     options.Cookie.Path = "/";
-    //options.Cookie.Domain = ".riidedstock.ee";
     options.Cookie.HttpOnly = true;
     options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     options.Cookie.SameSite = SameSiteMode.None;
-  
     options.ExpireTimeSpan = TimeSpan.FromDays(7);
 });
 
@@ -95,9 +90,7 @@ builder.Services.AddAuthentication(options =>
         {
             var token = context.Request.Cookies["access_token"];
             if (!string.IsNullOrEmpty(token))
-            {
                 context.Token = token;
-            }
             return Task.CompletedTask;
         }
     };
@@ -112,60 +105,63 @@ builder.Services.AddControllers(options =>
 });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
 var stripeOptions = builder.Configuration.GetSection("Stripe").Get<StripeSettings>();
 StripeConfiguration.ApiKey = stripeOptions.SecretKey;
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    //context.Database.Migrate();
-
-    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>(); 
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
+    // --- Сеед ролей ---
     const string adminRole = "Admin";
     if (!await roleManager.RoleExistsAsync(adminRole))
-    {
-        var roleResult = await roleManager.CreateAsync(new IdentityRole(adminRole));
-        if (!roleResult.Succeeded)
-        {
-            var errors = string.Join(", ", roleResult.Errors.Select(e => e.Description));
-            throw new Exception("Failed to create admin role: " + errors);
-        }
-    }
+        await roleManager.CreateAsync(new IdentityRole(adminRole));
 
+    if (!await roleManager.RoleExistsAsync("User"))
+        await roleManager.CreateAsync(new IdentityRole("User"));
+
+    // --- Сеед админа ---
     var adminEmail = builder.Configuration["AdminCredentials:Email"];
     var adminPassword = builder.Configuration["AdminCredentials:Password"];
-
     var adminUser = await userManager.FindByEmailAsync(adminEmail);
     if (adminUser == null)
     {
-        adminUser = new ApplicationUser 
+        adminUser = new ApplicationUser
         {
             UserName = adminEmail,
             Email = adminEmail,
             EmailConfirmed = true,
-            FullName = "Admin" 
-
+            FullName = "Admin"
         };
         var result = await userManager.CreateAsync(adminUser, adminPassword);
         if (!result.Succeeded)
-        {
-            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            throw new Exception("Failed to create admin user: " + errors);
-        }
+            throw new Exception("Failed to create admin user: " +
+                string.Join(", ", result.Errors.Select(e => e.Description)));
     }
-
     if (!await userManager.IsInRoleAsync(adminUser, adminRole))
+        await userManager.AddToRoleAsync(adminUser, adminRole);
+
+    // --- Сеед 10 тегов ---
+    var defaultTags = new[]
     {
-        var addToRoleResult = await userManager.AddToRoleAsync(adminUser, adminRole);
-        if (!addToRoleResult.Succeeded)
+        "Japanese Brand", "Balenciaga", "Archive", "Vintage",
+        "Limited Edition", "Streetwear", "Casual", "Luxury",
+        "Sustainable", "Handmade"
+    };
+
+    foreach (var tagName in defaultTags)
+    {
+        if (!context.Tags.Any(t => t.Name == tagName))
         {
-            var errors = string.Join(", ", addToRoleResult.Errors.Select(e => e.Description));
-            throw new Exception("Failed to add admin user to role: " + errors);
+            context.Tags.Add(new Tag { Name = tagName });
         }
     }
+    await context.SaveChangesAsync();
 }
 
 if (app.Environment.IsDevelopment())
@@ -176,18 +172,15 @@ if (app.Environment.IsDevelopment())
 
 app.UseDeveloperExceptionPage();
 app.UseHttpsRedirection();
-
 app.UseCors("AllowFrontend");
 
-app.Use(async (context, next) =>
+app.Use(async (contextHttp, next) =>
 {
-    context.Response.OnStarting(() =>
+    contextHttp.Response.OnStarting(() =>
     {
         Console.WriteLine("Response Headers:");
-        foreach (var header in context.Response.Headers)
-        {
+        foreach (var header in contextHttp.Response.Headers)
             Console.WriteLine($"{header.Key}: {header.Value}");
-        }
         return Task.CompletedTask;
     });
     await next();
@@ -198,5 +191,4 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
 app.Run();

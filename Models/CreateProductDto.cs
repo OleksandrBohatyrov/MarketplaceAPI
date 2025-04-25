@@ -15,5 +15,7 @@ namespace MarketplaceAPI.Models
 
         [Required]
         public int CategoryId { get; set; }
+
+        public List<int> TagIds { get; set; } = new List<int>();
     }
 }
