@@ -1,11 +1,12 @@
-﻿using MarketplaceAPI.Data;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Claims;
+using MarketplaceAPI.Data;
 using MarketplaceAPI.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Linq;
-using System.Security.Claims;
 
 namespace MarketplaceAPI.Controllers
 {
@@ -17,47 +18,41 @@ namespace MarketplaceAPI.Controllers
         private readonly ApplicationDbContext _db;
         public ProductsController(ApplicationDbContext db) => _db = db;
 
-        // GET feed с тегами
+        // GET /api/products/feed
         [HttpGet("feed")]
         public IActionResult GetFeed()
         {
             var products = _db.Products
-                .Include(p => p.Category)
-                .Include(p => p.Seller)
-                .Include(p => p.ProductTags)
-                    .ThenInclude(pt => pt.Tag)
-                .OrderByDescending(p => p.CreatedAt)
-                .ToList();
-
+                              .Include(p => p.Category)
+                              .Include(p => p.Seller)
+                              .OrderByDescending(p => p.CreatedAt)
+                              .ToList();
             return Ok(products);
         }
 
-        // GET одного товара с тегами
+        // GET /api/products/{id}
         [HttpGet("{id}")]
         public IActionResult GetProduct(int id)
         {
             var product = _db.Products
-                .Include(p => p.Category)
-                .Include(p => p.Seller)
-                .Include(p => p.ProductTags)
-                    .ThenInclude(pt => pt.Tag)
-                .FirstOrDefault(p => p.Id == id);
-
+                             .Include(p => p.Category)
+                             .Include(p => p.Seller)
+                             .FirstOrDefault(p => p.Id == id);
             if (product == null)
                 return NotFound(new { message = "Item not found" });
 
             return Ok(product);
         }
 
-        // POST — создание с тегами
+        // POST /api/products
         [HttpPost]
         [Authorize]
-        public IActionResult CreateProduct([FromBody] CreateProductDto dto)
+        public IActionResult CreateProduct([FromBody] ProductDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            if (dto == null || string.IsNullOrWhiteSpace(dto.Name))
+                return BadRequest(new { message = "Incorrect product data" });
 
-            if (dto.TagIds.Count > 5)
+            if (dto.TagIds?.Count > 5)
                 return BadRequest(new { message = "Максимум 5 тегов" });
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -78,69 +73,78 @@ namespace MarketplaceAPI.Controllers
             _db.SaveChanges();
 
             // сохраняем теги
-            foreach (var tagId in dto.TagIds.Take(5))
+            if (dto.TagIds != null && dto.TagIds.Any())
             {
-                _db.ProductTags.Add(new ProductTag
+                foreach (var tagId in dto.TagIds.Take(5))
                 {
-                    ProductId = product.Id,
-                    TagId = tagId
-                });
+                    _db.ProductTags.Add(new ProductTag
+                    {
+                        ProductId = product.Id,
+                        TagId = tagId
+                    });
+                }
+                _db.SaveChanges();
             }
+
+            return Ok(product);
+        }
+
+        // PUT /api/products/{id}
+        [HttpPut("{id}")]
+        [Authorize]
+        public IActionResult UpdateProduct(int id, [FromBody] ProductDto dto)
+        {
+            if (dto == null || string.IsNullOrWhiteSpace(dto.Name))
+                return BadRequest(new { message = "Incorrect product data" });
+
+            if (dto.TagIds?.Count > 5)
+                return BadRequest(new { message = "Максимум 5 тегов" });
+
+            var product = _db.Products
+                             .Include(p => p.ProductTags)
+                             .FirstOrDefault(p => p.Id == id);
+            if (product == null)
+                return NotFound(new { message = "Item not found" });
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var isAdmin = User.IsInRole("Admin");
+            if (product.SellerId != userId && !isAdmin)
+                return Forbid();
+
+            // обновляем поля
+            product.Name = dto.Name;
+            product.Description = dto.Description;
+            product.Price = dto.Price;
+            product.CategoryId = dto.CategoryId;
+
+            // удаляем старые теги
+            if (product.ProductTags.Any())
+            {
+                _db.ProductTags.RemoveRange(product.ProductTags);
+                _db.SaveChanges();
+            }
+
+            // добавляем новые
+            if (dto.TagIds != null && dto.TagIds.Any())
+            {
+                foreach (var tagId in dto.TagIds.Take(5))
+                {
+                    _db.ProductTags.Add(new ProductTag
+                    {
+                        ProductId = product.Id,
+                        TagId = tagId
+                    });
+                }
+                _db.SaveChanges();
+            }
+
+            _db.Products.Update(product);
             _db.SaveChanges();
 
             return Ok(product);
         }
 
-        // PUT — обновление, включая теги
-        [HttpPut("{id}")]
-        [Authorize]
-        public IActionResult UpdateProduct(int id, [FromBody] CreateProductDto dto)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            if (dto.TagIds.Count > 5)
-                return BadRequest(new { message = "Максимум 5 тегов" });
-
-            var existing = _db.Products
-                .Include(p => p.ProductTags)
-                .FirstOrDefault(p => p.Id == id);
-
-            if (existing == null)
-                return NotFound(new { message = "Item not found" });
-
-            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var isAdmin = User.IsInRole("Admin");
-            if (existing.SellerId != currentUserId && !isAdmin)
-                return Forbid();
-
-            // обновляем поля
-            existing.Name = dto.Name;
-            existing.Description = dto.Description;
-            existing.Price = dto.Price;
-            existing.CategoryId = dto.CategoryId;
-
-            // обновляем теги: сначала чистим старые
-            _db.ProductTags.RemoveRange(existing.ProductTags);
-            _db.SaveChanges();
-
-            // и добавляем новые
-            foreach (var tagId in dto.TagIds.Take(5))
-            {
-                _db.ProductTags.Add(new ProductTag
-                {
-                    ProductId = existing.Id,
-                    TagId = tagId
-                });
-            }
-
-            _db.Products.Update(existing);
-            _db.SaveChanges();
-
-            return Ok(existing);
-        }
-
-        // DELETE без изменений
+        // DELETE /api/products/{id}
         [HttpDelete("{id}")]
         [Authorize]
         public IActionResult DeleteProduct(int id)
@@ -149,15 +153,25 @@ namespace MarketplaceAPI.Controllers
             if (product == null)
                 return NotFound(new { message = "Item not found" });
 
-            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var isAdmin = User.IsInRole("Admin");
-            if (product.SellerId != currentUserId && !isAdmin)
+            if (product.SellerId != userId && !isAdmin)
                 return Forbid();
 
             _db.Products.Remove(product);
             _db.SaveChanges();
 
             return Ok(new { message = "The item has been successfully removed" });
+        }
+
+        // DTO для Create/Update
+        public class ProductDto
+        {
+            public string Name { get; set; }
+            public string Description { get; set; }
+            public decimal Price { get; set; }
+            public int CategoryId { get; set; }
+            public List<int> TagIds { get; set; } = new List<int>();
         }
     }
 }
