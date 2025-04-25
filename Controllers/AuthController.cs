@@ -95,7 +95,7 @@ namespace MarketplaceAPI.Controllers
                 Secure = true,
                 SameSite = SameSiteMode.None,
                 Expires = DateTime.UtcNow.AddDays(7),
-                Path = "/"
+                //Domain = ".riidedstock.ee",
             });
 
             return Ok(new { message = "Login successful" });
@@ -114,7 +114,7 @@ namespace MarketplaceAPI.Controllers
                     HttpOnly = true,
                     Secure = true,
                     SameSite = SameSiteMode.None,
-                    Path = "/",
+                    //Path = ".riidedstock.ee",
                     Expires = DateTime.UtcNow.AddDays(-1)
                 });
 
