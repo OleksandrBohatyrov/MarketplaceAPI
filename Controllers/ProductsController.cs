@@ -34,14 +34,32 @@ namespace MarketplaceAPI.Controllers
         [HttpGet("{id}")]
         public IActionResult GetProduct(int id)
         {
-            var product = _db.Products
-                             .Include(p => p.Category)
-                             .Include(p => p.Seller)
-                             .FirstOrDefault(p => p.Id == id);
-            if (product == null)
+            var p = _db.Products
+                       .Include(x => x.Category)
+                       .Include(x => x.Seller)
+                       .Include(x => x.ProductTags)
+                           .ThenInclude(pt => pt.Tag)
+                       .FirstOrDefault(x => x.Id == id);
+
+            if (p == null)
                 return NotFound(new { message = "Item not found" });
 
-            return Ok(product);
+            // Проекция в анонимный объект
+            var result = new
+            {
+                p.Id,
+                p.Name,
+                p.Description,
+                p.Price,
+                Category = new { p.Category.Id, p.Category.Name },
+                SellerId = p.SellerId,
+                Tags = p.ProductTags
+                              .Select(pt => new { pt.Tag.Id, pt.Tag.Name })
+                              .ToList(),
+                p.CreatedAt
+            };
+
+            return Ok(result);
         }
 
         // POST /api/products
