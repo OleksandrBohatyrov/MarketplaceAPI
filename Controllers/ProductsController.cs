@@ -18,15 +18,29 @@ namespace MarketplaceAPI.Controllers
         private readonly ApplicationDbContext _db;
         public ProductsController(ApplicationDbContext db) => _db = db;
 
-        // GET /api/products/feed
         [HttpGet("feed")]
         public IActionResult GetFeed()
         {
             var products = _db.Products
-                              .Include(p => p.Category)
-                              .Include(p => p.Seller)
-                              .OrderByDescending(p => p.CreatedAt)
-                              .ToList();
+                .Include(p => p.Category)
+                .Include(p => p.Seller)
+                .Include(p => p.ProductTags)
+                    .ThenInclude(pt => pt.Tag)
+                .OrderByDescending(p => p.CreatedAt)
+                .Select(p => new {
+                    p.Id,
+                    p.Name,
+                    p.Price,
+                    p.CategoryId,
+                    // Название категории, если надо
+                    CategoryName = p.Category.Name,
+                    // Список тегов
+                    Tags = p.ProductTags
+                             .Select(pt => new { pt.Tag.Id, pt.Tag.Name })
+                             .ToList()
+                })
+                .ToList();
+
             return Ok(products);
         }
 
