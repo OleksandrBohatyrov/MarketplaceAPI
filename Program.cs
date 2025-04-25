@@ -39,7 +39,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:3000")
+        policy.WithOrigins("https://riidedstock.ee", "https://www.riidedstock.ee")
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
@@ -51,6 +51,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.Name = "access_token";
     options.Cookie.Path = "/";
+    options.Cookie.Domain = ".riidedstock.ee";
     options.Cookie.HttpOnly = true;
     options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     options.Cookie.SameSite = SameSiteMode.None;
@@ -117,7 +118,7 @@ using (var scope = app.Services.CreateScope())
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-    // --- Сеед ролей ---
+    // --- пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ ---
     const string adminRole = "Admin";
     if (!await roleManager.RoleExistsAsync(adminRole))
         await roleManager.CreateAsync(new IdentityRole(adminRole));
@@ -125,7 +126,7 @@ using (var scope = app.Services.CreateScope())
     if (!await roleManager.RoleExistsAsync("User"))
         await roleManager.CreateAsync(new IdentityRole("User"));
 
-    // --- Сеед админа ---
+    // --- пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ ---
     var adminEmail = builder.Configuration["AdminCredentials:Email"];
     var adminPassword = builder.Configuration["AdminCredentials:Password"];
     var adminUser = await userManager.FindByEmailAsync(adminEmail);
@@ -146,7 +147,7 @@ using (var scope = app.Services.CreateScope())
     if (!await userManager.IsInRoleAsync(adminUser, adminRole))
         await userManager.AddToRoleAsync(adminUser, adminRole);
 
-    // --- Сеед 10 тегов ---
+    // --- пїЅпїЅпїЅпїЅ 10 пїЅпїЅпїЅпїЅпїЅ ---
     var defaultTags = new[]
     {
         "Japanese Brand", "Balenciaga", "Archive", "Vintage",
