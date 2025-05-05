@@ -3,7 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.9.34728.123
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarketplaceAPI", "MarketplaceAPI.csproj", "{FC27761C-3021-4677-AAF9-A4FE01D0C5C1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MarketplaceAPI", "MarketplaceAPI.csproj", "{FC27761C-3021-4677-AAF9-A4FE01D0C5C1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarketplaceAPI.Tests", "..\MarketplaceAPI.Tests\MarketplaceAPI.Tests.csproj", "{657A288D-E980-4190-BDED-3B8B0FBFD491}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{FC27761C-3021-4677-AAF9-A4FE01D0C5C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FC27761C-3021-4677-AAF9-A4FE01D0C5C1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FC27761C-3021-4677-AAF9-A4FE01D0C5C1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{657A288D-E980-4190-BDED-3B8B0FBFD491}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{657A288D-E980-4190-BDED-3B8B0FBFD491}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{657A288D-E980-4190-BDED-3B8B0FBFD491}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{657A288D-E980-4190-BDED-3B8B0FBFD491}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
