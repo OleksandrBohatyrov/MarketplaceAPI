@@ -49,7 +49,7 @@ namespace MarketplaceAPI.Controllers
                 if (stripeEvent.Type == "payment_intent.succeeded")
                 {
                     var intent = stripeEvent.Data.Object as PaymentIntent;
-                    // TODO: сохранить информацию об успешной оплате
+                    // TODO: save info abou succesfull payment
                 }
 
                 return Ok();
@@ -63,7 +63,7 @@ namespace MarketplaceAPI.Controllers
 
     public class CreatePaymentIntentRequest
     {
-        public long Amount { get; set; }      // в центах
-        public string Currency { get; set; }  // напр. "usd"
+        public long Amount { get; set; }      
+        public string Currency { get; set; }  
     }
 }
