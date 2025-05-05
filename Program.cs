@@ -1,5 +1,8 @@
 using System.Text;
 using Stripe;
+using Amazon;
+using Amazon.S3;
+using Amazon.Runtime;
 using MarketplaceAPI.Models;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -10,6 +13,7 @@ using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MarketplaceAPI.Data;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Stripe"));
@@ -22,6 +26,17 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
         new MySqlServerVersion(new Version(8, 0, 28)),
         mySqlOptions => mySqlOptions.EnableRetryOnFailure()
     ));
+
+
+var awsConf = builder.Configuration.GetSection("AWS");
+var region = RegionEndpoint.GetBySystemName(awsConf["Region"]);
+var creds = new BasicAWSCredentials(awsConf["AccessKey"], awsConf["SecretKey"]);
+
+builder.Services.AddSingleton<IAmazonS3>(sp =>
+    new AmazonS3Client(creds, region)
+);
+
+
 
 // Settings Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
@@ -105,6 +120,14 @@ builder.Services.AddControllers(options =>
 });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services
+    .AddControllers()
+    .AddJsonOptions(opts =>
+    {
+        opts.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        opts.JsonSerializerOptions.MaxDepth = 64;
+    });
 
 var stripeOptions = builder.Configuration.GetSection("Stripe").Get<StripeSettings>();
 StripeConfiguration.ApiKey = stripeOptions.SecretKey;

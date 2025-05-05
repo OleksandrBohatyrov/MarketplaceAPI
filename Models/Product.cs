@@ -31,5 +31,7 @@ namespace MarketplaceAPI.Models
 
         public ICollection<ProductTag> ProductTags { get; set; }
        = new List<ProductTag>();
+
+        public string ImageUrl { get; set; }
     }
 }
