@@ -117,7 +117,6 @@ using (var scope = app.Services.CreateScope())
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-    // --- Сеед ролей ---
     const string adminRole = "Admin";
     if (!await roleManager.RoleExistsAsync(adminRole))
         await roleManager.CreateAsync(new IdentityRole(adminRole));
@@ -125,7 +124,6 @@ using (var scope = app.Services.CreateScope())
     if (!await roleManager.RoleExistsAsync("User"))
         await roleManager.CreateAsync(new IdentityRole("User"));
 
-    // --- Сеед админа ---
     var adminEmail = builder.Configuration["AdminCredentials:Email"];
     var adminPassword = builder.Configuration["AdminCredentials:Password"];
     var adminUser = await userManager.FindByEmailAsync(adminEmail);
@@ -146,7 +144,6 @@ using (var scope = app.Services.CreateScope())
     if (!await userManager.IsInRoleAsync(adminUser, adminRole))
         await userManager.AddToRoleAsync(adminUser, adminRole);
 
-    // --- Сеед 10 тегов ---
     var defaultTags = new[]
     {
         "Japanese Brand", "Balenciaga", "Archive", "Vintage",
