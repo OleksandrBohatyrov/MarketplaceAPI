@@ -1,12 +1,20 @@
-﻿using System;
+﻿// File: Controllers/ProductsController.cs
+
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Security.Claims;
+using System.Threading.Tasks;
+using Amazon.S3;
+using Amazon.S3.Model;
 using MarketplaceAPI.Data;
 using MarketplaceAPI.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace MarketplaceAPI.Controllers
 {
@@ -15,9 +23,19 @@ namespace MarketplaceAPI.Controllers
     public class ProductsController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
-        public ProductsController(ApplicationDbContext db) => _db = db;
+        private readonly IAmazonS3 _s3;
+        private readonly string _bucketName;
 
-        // GET /api/products/feed
+        public ProductsController(
+            ApplicationDbContext db,
+            IAmazonS3 s3Client,
+            IConfiguration config)
+        {
+            _db = db;
+            _s3 = s3Client;
+            _bucketName = config["AWS:BucketName"];
+        }
+
         [HttpGet("feed")]
         [AllowAnonymous]
         public IActionResult GetFeed()
@@ -34,14 +52,16 @@ namespace MarketplaceAPI.Controllers
                     p.Price,
                     p.CategoryId,
                     CategoryName = p.Category.Name,
-                    Tags = p.ProductTags.Select(pt => new { pt.Tag.Id, pt.Tag.Name }).ToList()
+                    ImageUrl = p.ImageUrl,
+                    Tags = p.ProductTags
+                             .Select(pt => new { pt.Tag.Id, pt.Tag.Name })
+                             .ToList()
                 })
                 .ToList();
 
             return Ok(products);
         }
 
-        // GET /api/products/{id}
         [HttpGet("{id}")]
         [AllowAnonymous]
         public IActionResult GetProduct(int id)
@@ -63,54 +83,49 @@ namespace MarketplaceAPI.Controllers
                 p.Description,
                 p.Price,
                 Category = new { p.Category.Id, p.Category.Name },
+                p.ImageUrl,
                 SellerId = p.SellerId,
-                Tags = p.ProductTags.Select(pt => new { pt.Tag.Id, pt.Tag.Name }).ToList(),
+                Tags = p.ProductTags
+                              .Select(pt => new { pt.Tag.Id, pt.Tag.Name })
+                              .ToList(),
                 p.CreatedAt
             };
 
             return Ok(result);
         }
 
-        // GET /api/products/my-products
-        // Просмотр всех товаров текущего продавца с последним заказом и его статусом
-        [HttpGet("my-products")]
-        [Authorize]
-        public IActionResult GetMyProducts()
-        {
-            var sellerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            var result = _db.Products
-                .Where(p => p.SellerId == sellerId)
-                .Select(p => new
-                {
-                    p.Id,
-                    p.Name,
-                    p.Price,
-                    LastOrder = _db.Orders
-                        .Where(o => o.ProductId == p.Id)
-                        .OrderByDescending(o => o.CreatedAt)
-                        .Select(o => new { o.Id, o.Status })
-                        .FirstOrDefault()
-                })
-                .ToList();
-
-            return Ok(result);
-        }
-
-        // POST /api/products
         [HttpPost]
         [Authorize]
-        public IActionResult CreateProduct([FromBody] ProductDto dto)
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> CreateProduct([FromForm] ProductDto dto)
         {
             if (dto == null || string.IsNullOrWhiteSpace(dto.Name))
                 return BadRequest(new { message = "Incorrect product data" });
 
             if (dto.TagIds?.Count > 5)
-                return BadRequest(new { message = "Максимум 5 тегов" });
+                return BadRequest(new { message = "Max 5 tags" });
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized();
+
+            string imageUrl = null;
+            if (dto.Image != null && dto.Image.Length > 0)
+            {
+                var key = $"{Guid.NewGuid()}_{dto.Image.FileName}";
+                using var ms = new MemoryStream();
+                await dto.Image.CopyToAsync(ms);
+
+                var putRequest = new PutObjectRequest
+                {
+                    BucketName = _bucketName,
+                    Key = key,
+                    InputStream = ms,
+                };
+                await _s3.PutObjectAsync(putRequest);
+
+                imageUrl = $"https://{_bucketName}.s3.{_s3.Config.RegionEndpoint.SystemName}.amazonaws.com/{key}";
+            }
 
             var product = new Product
             {
@@ -119,11 +134,12 @@ namespace MarketplaceAPI.Controllers
                 Price = dto.Price,
                 CategoryId = dto.CategoryId,
                 SellerId = userId,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                ImageUrl = imageUrl
             };
 
             _db.Products.Add(product);
-            _db.SaveChanges();
+            await _db.SaveChangesAsync();
 
             if (dto.TagIds != null && dto.TagIds.Any())
             {
@@ -135,26 +151,25 @@ namespace MarketplaceAPI.Controllers
                         TagId = tagId
                     });
                 }
-                _db.SaveChanges();
+                await _db.SaveChangesAsync();
             }
 
             return Ok(product);
         }
 
-        // PUT /api/products/{id}
         [HttpPut("{id}")]
         [Authorize]
-        public IActionResult UpdateProduct(int id, [FromBody] ProductDto dto)
+        public async Task<IActionResult> UpdateProduct(int id, [FromBody] ProductDto dto)
         {
             if (dto == null || string.IsNullOrWhiteSpace(dto.Name))
                 return BadRequest(new { message = "Incorrect product data" });
 
             if (dto.TagIds?.Count > 5)
-                return BadRequest(new { message = "Максимум 5 тегов" });
+                return BadRequest(new { message = "Max 5 tags" });
 
-            var product = _db.Products
-                             .Include(p => p.ProductTags)
-                             .FirstOrDefault(p => p.Id == id);
+            var product = await _db.Products
+                                   .Include(p => p.ProductTags)
+                                   .FirstOrDefaultAsync(p => p.Id == id);
             if (product == null)
                 return NotFound(new { message = "Item not found" });
 
@@ -169,10 +184,7 @@ namespace MarketplaceAPI.Controllers
             product.CategoryId = dto.CategoryId;
 
             if (product.ProductTags.Any())
-            {
                 _db.ProductTags.RemoveRange(product.ProductTags);
-                _db.SaveChanges();
-            }
 
             if (dto.TagIds != null && dto.TagIds.Any())
             {
@@ -184,21 +196,19 @@ namespace MarketplaceAPI.Controllers
                         TagId = tagId
                     });
                 }
-                _db.SaveChanges();
             }
 
             _db.Products.Update(product);
-            _db.SaveChanges();
+            await _db.SaveChangesAsync();
 
             return Ok(product);
         }
 
-        // DELETE /api/products/{id}
         [HttpDelete("{id}")]
         [Authorize]
-        public IActionResult DeleteProduct(int id)
+        public async Task<IActionResult> DeleteProduct(int id)
         {
-            var product = _db.Products.FirstOrDefault(p => p.Id == id);
+            var product = await _db.Products.FindAsync(id);
             if (product == null)
                 return NotFound(new { message = "Item not found" });
 
@@ -208,12 +218,11 @@ namespace MarketplaceAPI.Controllers
                 return Forbid();
 
             _db.Products.Remove(product);
-            _db.SaveChanges();
+            await _db.SaveChangesAsync();
 
             return Ok(new { message = "The item has been successfully removed" });
         }
 
-        // DTO для Create/Update
         public class ProductDto
         {
             public string Name { get; set; }
@@ -221,6 +230,7 @@ namespace MarketplaceAPI.Controllers
             public decimal Price { get; set; }
             public int CategoryId { get; set; }
             public List<int> TagIds { get; set; } = new List<int>();
+            public IFormFile Image { get; set; }
         }
     }
 }

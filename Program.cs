@@ -1,5 +1,8 @@
 using System.Text;
 using Stripe;
+using Amazon;
+using Amazon.S3;
+using Amazon.Runtime;
 using MarketplaceAPI.Models;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -10,6 +13,7 @@ using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MarketplaceAPI.Data;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Stripe"));
@@ -22,6 +26,17 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
         new MySqlServerVersion(new Version(8, 0, 28)),
         mySqlOptions => mySqlOptions.EnableRetryOnFailure()
     ));
+
+
+var awsConf = builder.Configuration.GetSection("AWS");
+var region = RegionEndpoint.GetBySystemName(awsConf["Region"]);
+var creds = new BasicAWSCredentials(awsConf["AccessKey"], awsConf["SecretKey"]);
+
+builder.Services.AddSingleton<IAmazonS3>(sp =>
+    new AmazonS3Client(creds, region)
+);
+
+
 
 // Settings Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
@@ -106,6 +121,14 @@ builder.Services.AddControllers(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services
+    .AddControllers()
+    .AddJsonOptions(opts =>
+    {
+        opts.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        opts.JsonSerializerOptions.MaxDepth = 64;
+    });
+
 var stripeOptions = builder.Configuration.GetSection("Stripe").Get<StripeSettings>();
 StripeConfiguration.ApiKey = stripeOptions.SecretKey;
 
@@ -117,7 +140,6 @@ using (var scope = app.Services.CreateScope())
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-    // --- Сеед ролей ---
     const string adminRole = "Admin";
     if (!await roleManager.RoleExistsAsync(adminRole))
         await roleManager.CreateAsync(new IdentityRole(adminRole));
@@ -125,7 +147,6 @@ using (var scope = app.Services.CreateScope())
     if (!await roleManager.RoleExistsAsync("User"))
         await roleManager.CreateAsync(new IdentityRole("User"));
 
-    // --- Сеед админа ---
     var adminEmail = builder.Configuration["AdminCredentials:Email"];
     var adminPassword = builder.Configuration["AdminCredentials:Password"];
     var adminUser = await userManager.FindByEmailAsync(adminEmail);
@@ -146,7 +167,6 @@ using (var scope = app.Services.CreateScope())
     if (!await userManager.IsInRoleAsync(adminUser, adminRole))
         await userManager.AddToRoleAsync(adminUser, adminRole);
 
-    // --- Сеед 10 тегов ---
     var defaultTags = new[]
     {
         "Japanese Brand", "Balenciaga", "Archive", "Vintage",
