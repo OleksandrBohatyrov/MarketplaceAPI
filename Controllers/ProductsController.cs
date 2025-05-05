@@ -12,13 +12,14 @@ namespace MarketplaceAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [AllowAnonymous]
     public class ProductsController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
         public ProductsController(ApplicationDbContext db) => _db = db;
 
+        // GET /api/products/feed
         [HttpGet("feed")]
+        [AllowAnonymous]
         public IActionResult GetFeed()
         {
             var products = _db.Products
@@ -32,12 +33,8 @@ namespace MarketplaceAPI.Controllers
                     p.Name,
                     p.Price,
                     p.CategoryId,
-                    // Название категории, если надо
                     CategoryName = p.Category.Name,
-                    // Список тегов
-                    Tags = p.ProductTags
-                             .Select(pt => new { pt.Tag.Id, pt.Tag.Name })
-                             .ToList()
+                    Tags = p.ProductTags.Select(pt => new { pt.Tag.Id, pt.Tag.Name }).ToList()
                 })
                 .ToList();
 
@@ -46,6 +43,7 @@ namespace MarketplaceAPI.Controllers
 
         // GET /api/products/{id}
         [HttpGet("{id}")]
+        [AllowAnonymous]
         public IActionResult GetProduct(int id)
         {
             var p = _db.Products
@@ -58,7 +56,6 @@ namespace MarketplaceAPI.Controllers
             if (p == null)
                 return NotFound(new { message = "Item not found" });
 
-            // Проекция в анонимный объект
             var result = new
             {
                 p.Id,
@@ -67,11 +64,35 @@ namespace MarketplaceAPI.Controllers
                 p.Price,
                 Category = new { p.Category.Id, p.Category.Name },
                 SellerId = p.SellerId,
-                Tags = p.ProductTags
-                              .Select(pt => new { pt.Tag.Id, pt.Tag.Name })
-                              .ToList(),
+                Tags = p.ProductTags.Select(pt => new { pt.Tag.Id, pt.Tag.Name }).ToList(),
                 p.CreatedAt
             };
+
+            return Ok(result);
+        }
+
+        // GET /api/products/my-products
+        // Просмотр всех товаров текущего продавца с последним заказом и его статусом
+        [HttpGet("my-products")]
+        [Authorize]
+        public IActionResult GetMyProducts()
+        {
+            var sellerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var result = _db.Products
+                .Where(p => p.SellerId == sellerId)
+                .Select(p => new
+                {
+                    p.Id,
+                    p.Name,
+                    p.Price,
+                    LastOrder = _db.Orders
+                        .Where(o => o.ProductId == p.Id)
+                        .OrderByDescending(o => o.CreatedAt)
+                        .Select(o => new { o.Id, o.Status })
+                        .FirstOrDefault()
+                })
+                .ToList();
 
             return Ok(result);
         }
@@ -104,7 +125,6 @@ namespace MarketplaceAPI.Controllers
             _db.Products.Add(product);
             _db.SaveChanges();
 
-            // сохраняем теги
             if (dto.TagIds != null && dto.TagIds.Any())
             {
                 foreach (var tagId in dto.TagIds.Take(5))
@@ -143,20 +163,17 @@ namespace MarketplaceAPI.Controllers
             if (product.SellerId != userId && !isAdmin)
                 return Forbid();
 
-            // обновляем поля
             product.Name = dto.Name;
             product.Description = dto.Description;
             product.Price = dto.Price;
             product.CategoryId = dto.CategoryId;
 
-            // удаляем старые теги
             if (product.ProductTags.Any())
             {
                 _db.ProductTags.RemoveRange(product.ProductTags);
                 _db.SaveChanges();
             }
 
-            // добавляем новые
             if (dto.TagIds != null && dto.TagIds.Any())
             {
                 foreach (var tagId in dto.TagIds.Take(5))
