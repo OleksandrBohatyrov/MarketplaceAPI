@@ -151,30 +151,10 @@ namespace MarketplaceAPI.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(255)");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime?>("DeliveredAt")
+                    b.Property<DateTime>("OrderDate")
                         .HasColumnType("datetime(6)");
 
                     b.Property<int>("ProductId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("int");
-
-                    b.Property<string>("SellerId")
-                        .IsRequired()
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<DateTime?>("ShippedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("ShippingAddress")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("Status")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
@@ -182,8 +162,6 @@ namespace MarketplaceAPI.Migrations
                     b.HasIndex("BuyerId");
 
                     b.HasIndex("ProductId");
-
-                    b.HasIndex("SellerId");
 
                     b.ToTable("Orders");
                 });
@@ -203,6 +181,10 @@ namespace MarketplaceAPI.Migrations
                         .HasColumnType("datetime(6)");
 
                     b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("ImageUrl")
                         .IsRequired()
                         .HasColumnType("longtext");
 
@@ -450,17 +432,9 @@ namespace MarketplaceAPI.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MarketplaceAPI.Models.ApplicationUser", "Seller")
-                        .WithMany()
-                        .HasForeignKey("SellerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.Navigation("Buyer");
 
                     b.Navigation("Product");
-
-                    b.Navigation("Seller");
                 });
 
             modelBuilder.Entity("MarketplaceAPI.Models.Product", b =>
