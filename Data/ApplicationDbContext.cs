@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using MarketplaceAPI.Models;  // <-- Здесь должны быть Product, Category, Tag, ProductTag и т. д.
+using MarketplaceAPI.Models;
 
 namespace MarketplaceAPI.Data
 {
@@ -12,7 +12,7 @@ namespace MarketplaceAPI.Data
 
         public DbSet<Product> Products { get; set; }
         public DbSet<Category> Categories { get; set; }
-        public DbSet<Tag> Tags { get; set; }                
+        public DbSet<Tag> Tags { get; set; }
         public DbSet<ProductTag> ProductTags { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<Transaction> Transactions { get; set; }
@@ -22,6 +22,7 @@ namespace MarketplaceAPI.Data
         {
             base.OnModelCreating(builder);
 
+           
             builder.Entity<ProductTag>()
                 .HasKey(pt => new { pt.ProductId, pt.TagId });
 
@@ -34,6 +35,8 @@ namespace MarketplaceAPI.Data
                 .HasOne(pt => pt.Tag)
                 .WithMany(t => t.ProductTags)
                 .HasForeignKey(pt => pt.TagId);
+
+         
         }
     }
 }
