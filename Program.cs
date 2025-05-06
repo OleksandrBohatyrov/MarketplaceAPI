@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using Stripe;
 using Amazon;
 using Amazon.S3;
@@ -181,6 +181,30 @@ using (var scope = app.Services.CreateScope())
             context.Tags.Add(new Tag { Name = tagName });
         }
     }
+    await context.SaveChangesAsync();
+   
+    var defaultCategories = new[]
+    {
+    "T-särk",    
+    "Kampsun",    
+    "Püksid",     
+    "Sokid",      
+    "Jakk",      
+    "Kleit",    
+    "Seelik",     
+    "Kingad",     
+    "Müts",       
+    "Sall"        
+};
+    foreach (var catName in defaultCategories)
+    {
+        if (!context.Categories.Any(c => c.Name == catName))
+        {
+            context.Categories.Add(new Category { Name = catName });
+        }
+    }
+
+    // Сохраняем сразу и теги, и категории
     await context.SaveChangesAsync();
 }
 
