@@ -19,9 +19,11 @@ namespace MarketplaceAPI.Controllers
         public ProductsController(ApplicationDbContext db) => _db = db;
 
         [HttpGet("feed")]
+        [AllowAnonymous]
         public IActionResult GetFeed()
         {
             var products = _db.Products
+                .Where(p => p.Status == ProductStatus.Active)          
                 .Include(p => p.Category)
                 .Include(p => p.Seller)
                 .Include(p => p.ProductTags)
@@ -31,13 +33,9 @@ namespace MarketplaceAPI.Controllers
                     p.Id,
                     p.Name,
                     p.Price,
-                    p.CategoryId,
-                    // Название категории, если надо
                     CategoryName = p.Category.Name,
-                    // Список тегов
-                    Tags = p.ProductTags
-                             .Select(pt => new { pt.Tag.Id, pt.Tag.Name })
-                             .ToList()
+                    Tags = p.ProductTags.Select(pt => new { pt.Tag.Id, pt.Tag.Name }),
+                    p.CreatedAt
                 })
                 .ToList();
 
@@ -195,6 +193,7 @@ namespace MarketplaceAPI.Controllers
 
             return Ok(new { message = "The item has been successfully removed" });
         }
+      
         [HttpGet("my-products")]
         [Authorize]
         public IActionResult GetMyProducts()
@@ -202,24 +201,39 @@ namespace MarketplaceAPI.Controllers
             var sellerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             var list = _db.Products
-                .Include(p => p.Category)
-                .Include(p => p.ProductTags)
-                    .ThenInclude(pt => pt.Tag)
                 .Where(p => p.SellerId == sellerId)
+                .Include(p => p.Category)
+                .Include(p => p.ProductTags).ThenInclude(pt => pt.Tag)
                 .OrderByDescending(p => p.CreatedAt)
                 .Select(p => new {
                     p.Id,
                     p.Name,
-                    p.Description,
                     p.Price,
                     Category = new { p.Category.Id, p.Category.Name },
                     Tags = p.ProductTags.Select(pt => new { pt.Tag.Id, pt.Tag.Name }),
-                    p.CreatedAt
+                    p.CreatedAt,
+                    p.Status      // теперь на фронте сможете показать “Active” или “Sold”
                 })
                 .ToList();
 
             return Ok(list);
         }
+        // PUT /api/products/{id}/mark-sold
+        [HttpPut("{id}/mark-sold")]
+        [Authorize]
+        public IActionResult MarkSold(int id)
+        {
+            var product = _db.Products.Find(id);
+            if (product == null) return NotFound();
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (product.SellerId != userId && !User.IsInRole("Admin")) return Forbid();
+
+            product.Status = ProductStatus.Sold;
+            _db.SaveChanges();
+            return Ok(product);
+        }
+
+
         // DTO для Create/Update
         public class ProductDto
         {
