@@ -125,7 +125,7 @@ builder.Services
     .AddControllers()
     .AddJsonOptions(opts =>
     {
-        opts.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        opts.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles; //igonre json
         opts.JsonSerializerOptions.MaxDepth = 64;
     });
 
