@@ -184,6 +184,10 @@ namespace MarketplaceAPI.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -195,6 +199,9 @@ namespace MarketplaceAPI.Migrations
                     b.Property<string>("SellerId")
                         .IsRequired()
                         .HasColumnType("varchar(255)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 

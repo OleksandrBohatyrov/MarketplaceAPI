@@ -1,5 +1,8 @@
-using System.Text;
+Ôªøusing System.Text;
 using Stripe;
+using Amazon;
+using Amazon.S3;
+using Amazon.Runtime;
 using MarketplaceAPI.Models;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -10,6 +13,7 @@ using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MarketplaceAPI.Data;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Stripe"));
@@ -22,6 +26,17 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
         new MySqlServerVersion(new Version(8, 0, 28)),
         mySqlOptions => mySqlOptions.EnableRetryOnFailure()
     ));
+
+
+var awsConf = builder.Configuration.GetSection("AWS");
+var region = RegionEndpoint.GetBySystemName(awsConf["Region"]);
+var creds = new BasicAWSCredentials(awsConf["AccessKey"], awsConf["SecretKey"]);
+
+builder.Services.AddSingleton<IAmazonS3>(sp =>
+    new AmazonS3Client(creds, region)
+);
+
+
 
 // Settings Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
@@ -106,6 +121,14 @@ builder.Services.AddControllers(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services
+    .AddControllers()
+    .AddJsonOptions(opts =>
+    {
+        opts.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles; //igonre json
+        opts.JsonSerializerOptions.MaxDepth = 64;
+    });
+
 var stripeOptions = builder.Configuration.GetSection("Stripe").Get<StripeSettings>();
 StripeConfiguration.ApiKey = stripeOptions.SecretKey;
 
@@ -117,7 +140,6 @@ using (var scope = app.Services.CreateScope())
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-    // --- —ÂÂ‰ ÓÎÂÈ ---
     const string adminRole = "Admin";
     if (!await roleManager.RoleExistsAsync(adminRole))
         await roleManager.CreateAsync(new IdentityRole(adminRole));
@@ -125,7 +147,6 @@ using (var scope = app.Services.CreateScope())
     if (!await roleManager.RoleExistsAsync("User"))
         await roleManager.CreateAsync(new IdentityRole("User"));
 
-    // --- —ÂÂ‰ ‡‰ÏËÌ‡ ---
     var adminEmail = builder.Configuration["AdminCredentials:Email"];
     var adminPassword = builder.Configuration["AdminCredentials:Password"];
     var adminUser = await userManager.FindByEmailAsync(adminEmail);
@@ -146,7 +167,6 @@ using (var scope = app.Services.CreateScope())
     if (!await userManager.IsInRoleAsync(adminUser, adminRole))
         await userManager.AddToRoleAsync(adminUser, adminRole);
 
-    // --- —ÂÂ‰ 10 ÚÂ„Ó‚ ---
     var defaultTags = new[]
     {
         "Japanese Brand", "Balenciaga", "Archive", "Vintage",
@@ -161,6 +181,30 @@ using (var scope = app.Services.CreateScope())
             context.Tags.Add(new Tag { Name = tagName });
         }
     }
+    await context.SaveChangesAsync();
+   
+    var defaultCategories = new[]
+    {
+    "T-s√§rk",    
+    "Kampsun",    
+    "P√ºksid",     
+    "Sokid",      
+    "Jakk",      
+    "Kleit",    
+    "Seelik",     
+    "Kingad",     
+    "M√ºts",       
+    "Sall"        
+};
+    foreach (var catName in defaultCategories)
+    {
+        if (!context.Categories.Any(c => c.Name == catName))
+        {
+            context.Categories.Add(new Category { Name = catName });
+        }
+    }
+
+    // –°–æ—Ö—Ä–∞–Ω—è–µ–º —Å—Ä–∞–∑—É –∏ —Ç–µ–≥–∏, –∏ –∫–∞—Ç–µ–≥–æ—Ä–∏–∏
     await context.SaveChangesAsync();
 }
 

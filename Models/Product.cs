@@ -31,5 +31,9 @@ namespace MarketplaceAPI.Models
 
         public ICollection<ProductTag> ProductTags { get; set; }
        = new List<ProductTag>();
+
+        [MaxLength(200)]
+        public ProductStatus Status { get; set; } = ProductStatus.Active;
+        public string ImageUrl { get; set; }
     }
 }

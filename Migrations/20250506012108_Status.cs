@@ -5,7 +5,7 @@
 namespace MarketplaceAPI.Migrations
 {
     /// <inheritdoc />
-    public partial class FixApplictaionUser : Migration
+    public partial class Status : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
