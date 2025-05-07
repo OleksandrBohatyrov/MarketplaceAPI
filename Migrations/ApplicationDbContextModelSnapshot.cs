@@ -200,11 +200,8 @@ namespace MarketplaceAPI.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(255)");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("longtext")
-                        .HasDefaultValue("Available");
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -246,6 +243,41 @@ namespace MarketplaceAPI.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Tags");
+                });
+
+            modelBuilder.Entity("MarketplaceAPI.Models.Trade", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("OfferedProductId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RequestedProductId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RequesterId")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OfferedProductId");
+
+                    b.HasIndex("RequestedProductId");
+
+                    b.HasIndex("RequesterId");
+
+                    b.ToTable("Trades");
                 });
 
             modelBuilder.Entity("MarketplaceAPI.Models.Transaction", b =>
@@ -479,6 +511,33 @@ namespace MarketplaceAPI.Migrations
                     b.Navigation("Product");
 
                     b.Navigation("Tag");
+                });
+
+            modelBuilder.Entity("MarketplaceAPI.Models.Trade", b =>
+                {
+                    b.HasOne("MarketplaceAPI.Models.Product", "OfferedProduct")
+                        .WithMany()
+                        .HasForeignKey("OfferedProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MarketplaceAPI.Models.Product", "RequestedProduct")
+                        .WithMany()
+                        .HasForeignKey("RequestedProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MarketplaceAPI.Models.ApplicationUser", "Requester")
+                        .WithMany()
+                        .HasForeignKey("RequesterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("OfferedProduct");
+
+                    b.Navigation("RequestedProduct");
+
+                    b.Navigation("Requester");
                 });
 
             modelBuilder.Entity("MarketplaceAPI.Models.Transaction", b =>
