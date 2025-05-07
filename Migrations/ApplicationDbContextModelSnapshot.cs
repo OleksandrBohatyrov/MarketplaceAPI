@@ -300,23 +300,23 @@ namespace MarketplaceAPI.Migrations
                     b.Property<int>("OfferedProductId")
                         .HasColumnType("int");
 
-                    b.Property<int>("RequestedProductId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("RequesterId")
+                    b.Property<string>("ProposerId")
                         .IsRequired()
                         .HasColumnType("varchar(255)");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<int>("TargetProductId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("OfferedProductId");
 
-                    b.HasIndex("RequestedProductId");
+                    b.HasIndex("ProposerId");
 
-                    b.HasIndex("RequesterId");
+                    b.HasIndex("TargetProductId");
 
                     b.ToTable("Trades");
                 });
@@ -581,23 +581,23 @@ namespace MarketplaceAPI.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MarketplaceAPI.Models.Product", "RequestedProduct")
+                    b.HasOne("MarketplaceAPI.Models.ApplicationUser", "Proposer")
                         .WithMany()
-                        .HasForeignKey("RequestedProductId")
+                        .HasForeignKey("ProposerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MarketplaceAPI.Models.ApplicationUser", "Requester")
+                    b.HasOne("MarketplaceAPI.Models.Product", "TargetProduct")
                         .WithMany()
-                        .HasForeignKey("RequesterId")
+                        .HasForeignKey("TargetProductId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("OfferedProduct");
 
-                    b.Navigation("RequestedProduct");
+                    b.Navigation("Proposer");
 
-                    b.Navigation("Requester");
+                    b.Navigation("TargetProduct");
                 });
 
             modelBuilder.Entity("MarketplaceAPI.Models.Transaction", b =>

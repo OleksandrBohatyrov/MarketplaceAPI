@@ -14,6 +14,12 @@ public class BidsController : ControllerBase
     private readonly ApplicationDbContext _db;
     public BidsController(ApplicationDbContext db) => _db = db;
 
+    public class BidDto
+    {
+        public int ProductId { get; set; }
+        public decimal Amount { get; set; }
+    }
+
     // POST /api/bids
     [HttpPost]
     [Authorize]
@@ -22,19 +28,25 @@ public class BidsController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
         var product = _db.Products.Find(dto.ProductId);
-        if (product == null) return NotFound("Product not found");
-        if (!product.IsAuction) return BadRequest("Not an auction");
-        if (product.EndsAt <= DateTime.UtcNow) return BadRequest("Auction ended");
+        if (product == null)
+            return NotFound("Product not found");
+        if (!product.IsAuction)
+            return BadRequest("Not an auction");
+        if (product.EndsAt <= DateTime.UtcNow)
+            return BadRequest("Auction ended");
 
-        // текущий максимум
-        var max = _db.Bids
+        // --- Считаем текущий максимум ставки: либо из БД, либо минимальная при старте аукциона ---
+        // EF Core корректно переведёт этот запрос в SQL
+        var maxBidInDb = _db.Bids
             .Where(b => b.ProductId == dto.ProductId)
-            .Select(b => b.Amount)
-            .DefaultIfEmpty(product.MinBid ?? 0)
+            .Select(b => (decimal?)b.Amount)
             .Max();
 
-        if (dto.Amount <= max)
-            return BadRequest($"Bid must exceed {max}");
+        // Если в БД нет ставок — берём минимальную
+        var currentMax = maxBidInDb ?? (product.MinBid ?? 0);
+
+        if (dto.Amount <= currentMax)
+            return BadRequest($"Bid must exceed {currentMax}");
 
         var bid = new Bid
         {
@@ -42,9 +54,17 @@ public class BidsController : ControllerBase
             BidderId = userId,
             Amount = dto.Amount
         };
+
         _db.Bids.Add(bid);
         _db.SaveChanges();
-        return Ok(bid);
+
+        return Ok(new
+        {
+            bid.Id,
+            bid.Amount,
+            bid.Timestamp,
+            Bidder = new { Id = userId } // или можно сразу вернуть полную DTO
+        });
     }
 
     // GET /api/bids?productId=123
@@ -62,12 +82,7 @@ public class BidsController : ControllerBase
                 Bidder = new { b.Bidder.Id, b.Bidder.UserName }
             })
             .ToList();
+
         return Ok(list);
     }
-}
-
-public class BidDto
-{
-    public int ProductId { get; set; }
-    public decimal Amount { get; set; }
 }

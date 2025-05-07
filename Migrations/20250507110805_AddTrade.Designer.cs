@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MarketplaceAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250507023758_AddTradeEntity")]
-    partial class AddTradeEntity
+    [Migration("20250507110805_AddTrade")]
+    partial class AddTrade
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -92,6 +92,36 @@ namespace MarketplaceAPI.Migrations
                         .HasDatabaseName("UserNameIndex");
 
                     b.ToTable("AspNetUsers", (string)null);
+                });
+
+            modelBuilder.Entity("MarketplaceAPI.Models.Bid", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("BidderId")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BidderId");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("Bids");
                 });
 
             modelBuilder.Entity("MarketplaceAPI.Models.CartItem", b =>
@@ -187,9 +217,20 @@ namespace MarketplaceAPI.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<DateTime?>("EndsAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<string>("ImageUrl")
                         .IsRequired()
                         .HasColumnType("longtext");
+
+                    b.Property<bool>("IsAuction")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(false);
+
+                    b.Property<decimal?>("MinBid")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -262,23 +303,23 @@ namespace MarketplaceAPI.Migrations
                     b.Property<int>("OfferedProductId")
                         .HasColumnType("int");
 
-                    b.Property<int>("RequestedProductId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("RequesterId")
+                    b.Property<string>("ProposerId")
                         .IsRequired()
                         .HasColumnType("varchar(255)");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<int>("TargetProductId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("OfferedProductId");
 
-                    b.HasIndex("RequestedProductId");
+                    b.HasIndex("ProposerId");
 
-                    b.HasIndex("RequesterId");
+                    b.HasIndex("TargetProductId");
 
                     b.ToTable("Trades");
                 });
@@ -440,6 +481,25 @@ namespace MarketplaceAPI.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("MarketplaceAPI.Models.Bid", b =>
+                {
+                    b.HasOne("MarketplaceAPI.Models.ApplicationUser", "Bidder")
+                        .WithMany()
+                        .HasForeignKey("BidderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MarketplaceAPI.Models.Product", "Product")
+                        .WithMany("Bids")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Bidder");
+
+                    b.Navigation("Product");
+                });
+
             modelBuilder.Entity("MarketplaceAPI.Models.CartItem", b =>
                 {
                     b.HasOne("MarketplaceAPI.Models.Product", "Product")
@@ -524,23 +584,23 @@ namespace MarketplaceAPI.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MarketplaceAPI.Models.Product", "RequestedProduct")
+                    b.HasOne("MarketplaceAPI.Models.ApplicationUser", "Proposer")
                         .WithMany()
-                        .HasForeignKey("RequestedProductId")
+                        .HasForeignKey("ProposerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MarketplaceAPI.Models.ApplicationUser", "Requester")
+                    b.HasOne("MarketplaceAPI.Models.Product", "TargetProduct")
                         .WithMany()
-                        .HasForeignKey("RequesterId")
+                        .HasForeignKey("TargetProductId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("OfferedProduct");
 
-                    b.Navigation("RequestedProduct");
+                    b.Navigation("Proposer");
 
-                    b.Navigation("Requester");
+                    b.Navigation("TargetProduct");
                 });
 
             modelBuilder.Entity("MarketplaceAPI.Models.Transaction", b =>
@@ -607,6 +667,8 @@ namespace MarketplaceAPI.Migrations
 
             modelBuilder.Entity("MarketplaceAPI.Models.Product", b =>
                 {
+                    b.Navigation("Bids");
+
                     b.Navigation("ProductTags");
                 });
 

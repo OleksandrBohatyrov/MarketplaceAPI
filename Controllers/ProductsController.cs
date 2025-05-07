@@ -53,7 +53,6 @@ namespace MarketplaceAPI.Controllers
             }
         }
 
-        // GET /api/products/feed
         [HttpGet("feed")]
         [AllowAnonymous]
         public IActionResult GetFeed()
@@ -62,42 +61,35 @@ namespace MarketplaceAPI.Controllers
 
             var now = DateTime.UtcNow;
             var products = _db.Products
-
-                // 1) только Available
                 .Where(p => p.Status == ProductStatus.Available)
-
-                // 2) Оставить либо обычные товары, либо активные аукционы
-                .Where(p =>
-                    !p.IsAuction
-                    || (p.IsAuction && p.EndsAt > now)
-                )
-
-                // 3) Жадная загрузка зависимостей
+                .Where(p => !p.IsAuction || (p.IsAuction && p.EndsAt > now))
                 .Include(p => p.Category)
                 .Include(p => p.Seller)
                 .Include(p => p.ProductTags).ThenInclude(pt => pt.Tag)
-
-                // 4) Сортировка
-                .OrderByDescending(p => p.CreatedAt)
-
-                // 5) Проекция в DTO
                 .Select(p => new {
                     p.Id,
                     p.Name,
-                    // для «купить сразу» отображаем p.Price;
-                    // для аукциона фронт сам возьмёт p.MinBid и список ставок
+                    // оригинальный «фикс. цена» оставляем в поле Price на случай «купить сразу»
                     p.Price,
-
-                    // флаг и данные аукциона
-                    p.IsAuction,
+                    // стартовая цена аукциона
                     MinBid = p.MinBid,
+                    // время окончания
                     EndsAt = p.EndsAt,
-
+                    IsAuction = p.IsAuction,
                     Status = p.Status.ToString(),
                     Category = new { p.Category.Id, p.Category.Name },
                     ImageUrl = p.ImageUrl,
-                    Tags = p.ProductTags.Select(pt => new { pt.Tag.Id, pt.Tag.Name })
+                    Tags = p.ProductTags.Select(pt => new { pt.Tag.Id, pt.Tag.Name }),
+
+                    // --- новый параметр: текущая высшая ставка (если ставок нет, = MinBid или Price) ---
+                    CurrentBid = p.IsAuction
+                      ? _db.Bids
+                          .Where(b => b.ProductId == p.Id)
+                          .Select(b => (decimal?)b.Amount)
+                          .Max() ?? p.MinBid ?? 0
+                      : p.Price
                 })
+                .OrderByDescending(p => p.Id)
                 .ToList();
 
             return Ok(products);
