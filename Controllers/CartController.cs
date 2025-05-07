@@ -87,5 +87,27 @@ namespace MarketplaceAPI.Controllers
             await _db.SaveChangesAsync();
             return Ok("Removed form cart");
         }
+
+        // POST /api/cart/checkout
+        [HttpPost("checkout")]
+        public async Task<IActionResult> Checkout()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var cartItems = await _db.CartItems
+                .Include(ci => ci.Product)
+                .Where(ci => ci.UserId == userId)
+                .ToListAsync();
+
+            if (!cartItems.Any())
+                return BadRequest("Cart is empty");
+
+            foreach (var ci in cartItems)
+                ci.Product.Status = ProductStatus.Sold;
+
+            _db.CartItems.RemoveRange(cartItems);
+            await _db.SaveChangesAsync();
+
+            return Ok("Checkout successful");
+        }
     }
 }

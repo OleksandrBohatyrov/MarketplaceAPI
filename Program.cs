@@ -1,5 +1,8 @@
-using System.Text;
+﻿using System.Text;
 using Stripe;
+using Amazon;
+using Amazon.S3;
+using Amazon.Runtime;
 using MarketplaceAPI.Models;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -10,6 +13,7 @@ using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MarketplaceAPI.Data;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Stripe"));
@@ -22,6 +26,17 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
         new MySqlServerVersion(new Version(8, 0, 28)),
         mySqlOptions => mySqlOptions.EnableRetryOnFailure()
     ));
+
+
+var awsConf = builder.Configuration.GetSection("AWS");
+var region = RegionEndpoint.GetBySystemName(awsConf["Region"]);
+var creds = new BasicAWSCredentials(awsConf["AccessKey"], awsConf["SecretKey"]);
+
+builder.Services.AddSingleton<IAmazonS3>(sp =>
+    new AmazonS3Client(creds, region)
+);
+
+
 
 // Settings Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
@@ -39,7 +54,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("https://riidedstock.ee", "https://www.riidedstock.ee")
+        policy.WithOrigins("http://localhost:3000")
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
@@ -51,7 +66,6 @@ builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.Name = "access_token";
     options.Cookie.Path = "/";
-    options.Cookie.Domain = ".riidedstock.ee";
     options.Cookie.HttpOnly = true;
     options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     options.Cookie.SameSite = SameSiteMode.None;
@@ -107,6 +121,14 @@ builder.Services.AddControllers(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services
+    .AddControllers()
+    .AddJsonOptions(opts =>
+    {
+        opts.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles; //igonre json
+        opts.JsonSerializerOptions.MaxDepth = 64;
+    });
+
 var stripeOptions = builder.Configuration.GetSection("Stripe").Get<StripeSettings>();
 StripeConfiguration.ApiKey = stripeOptions.SecretKey;
 
@@ -115,13 +137,6 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-
-
-    context.Database.Migrate();
-
-
-
-
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
@@ -152,21 +167,43 @@ using (var scope = app.Services.CreateScope())
     if (!await userManager.IsInRoleAsync(adminUser, adminRole))
         await userManager.AddToRoleAsync(adminUser, adminRole);
 
-    var defaultTags = new[]
-    {
-        "Japanese Brand", "Balenciaga", "Archive", "Vintage",
-        "Limited Edition", "Streetwear", "Casual", "Luxury",
-        "Sustainable", "Handmade"
-    };
+    //var defaultTags = new[]
+    //{
+    //    "Japanese Brand", "Balenciaga", "Archive", "Vintage",
+    //    "Limited Edition", "Streetwear", "Casual", "Luxury",
+    //    "Sustainable", "Handmade"
+    //};
 
-    foreach (var tagName in defaultTags)
+    //foreach (var tagName in defaultTags)
+    //{
+    //    if (!context.Tags.Any(t => t.Name == tagName))
+    //    {
+    //        context.Tags.Add(new Tag { Name = tagName });
+    //    }
+    //}
+    //await context.SaveChangesAsync();
+
+    var defaultCategories = new[]
+ {
+    "T-sark",
+    "Kampsun",
+    "Püksid",
+    "Sokid",
+    "Jakk",
+    "Kleit",
+    "Seelik",
+    "Kingad",
+    "Müts",
+    "Sall"
+};
+    foreach (var catName in defaultCategories)
     {
-        if (!context.Tags.Any(t => t.Name == tagName))
+        if (!context.Categories.Any(c => c.Name == catName))
         {
-            context.Tags.Add(new Tag { Name = tagName });
+            context.Categories.Add(new Category { Name = catName });
         }
     }
-    await context.SaveChangesAsync();
+
 }
 
 if (app.Environment.IsDevelopment())
