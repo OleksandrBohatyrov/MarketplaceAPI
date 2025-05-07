@@ -12,6 +12,11 @@ namespace MarketplaceAPI.Models
         public decimal Price { get; set; }
         public int CategoryId { get; set; }
         public List<int> TagIds { get; set; } = new List<int>();
+      
         public List<IFormFile> Images { get; set; }
+
+        public bool IsAuction { get; set; }
+        public decimal? MinBid { get; set; }
+        public DateTime? EndsAt { get; set; }
     }
 }

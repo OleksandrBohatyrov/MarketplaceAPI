@@ -167,21 +167,21 @@ using (var scope = app.Services.CreateScope())
     if (!await userManager.IsInRoleAsync(adminUser, adminRole))
         await userManager.AddToRoleAsync(adminUser, adminRole);
 
-    var defaultTags = new[]
-    {
-        "Japanese Brand", "Balenciaga", "Archive", "Vintage",
-        "Limited Edition", "Streetwear", "Casual", "Luxury",
-        "Sustainable", "Handmade"
-    };
+    //var defaultTags = new[]
+    //{
+    //    "Japanese Brand", "Balenciaga", "Archive", "Vintage",
+    //    "Limited Edition", "Streetwear", "Casual", "Luxury",
+    //    "Sustainable", "Handmade"
+    //};
 
-    foreach (var tagName in defaultTags)
-    {
-        if (!context.Tags.Any(t => t.Name == tagName))
-        {
-            context.Tags.Add(new Tag { Name = tagName });
-        }
-    }
-    await context.SaveChangesAsync();
+    //foreach (var tagName in defaultTags)
+    //{
+    //    if (!context.Tags.Any(t => t.Name == tagName))
+    //    {
+    //        context.Tags.Add(new Tag { Name = tagName });
+    //    }
+    //}
+    //await context.SaveChangesAsync();
 
     var defaultCategories = new[]
  {

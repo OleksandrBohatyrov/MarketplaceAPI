@@ -217,10 +217,6 @@ namespace MarketplaceAPI.Migrations
                     b.Property<DateTime?>("EndsAt")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<string>("ImageUrl")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
                     b.Property<bool>("IsAuction")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("tinyint(1)")
@@ -251,6 +247,28 @@ namespace MarketplaceAPI.Migrations
                     b.HasIndex("SellerId");
 
                     b.ToTable("Products");
+                });
+
+            modelBuilder.Entity("MarketplaceAPI.Models.ProductImage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("ProductImages");
                 });
 
             modelBuilder.Entity("MarketplaceAPI.Models.ProductTag", b =>
@@ -554,6 +572,17 @@ namespace MarketplaceAPI.Migrations
                     b.Navigation("Seller");
                 });
 
+            modelBuilder.Entity("MarketplaceAPI.Models.ProductImage", b =>
+                {
+                    b.HasOne("MarketplaceAPI.Models.Product", "Product")
+                        .WithMany("ProductImages")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+                });
+
             modelBuilder.Entity("MarketplaceAPI.Models.ProductTag", b =>
                 {
                     b.HasOne("MarketplaceAPI.Models.Product", "Product")
@@ -665,6 +694,8 @@ namespace MarketplaceAPI.Migrations
             modelBuilder.Entity("MarketplaceAPI.Models.Product", b =>
                 {
                     b.Navigation("Bids");
+
+                    b.Navigation("ProductImages");
 
                     b.Navigation("ProductTags");
                 });

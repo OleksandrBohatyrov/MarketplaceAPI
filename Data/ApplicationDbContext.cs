@@ -21,7 +21,8 @@ namespace MarketplaceAPI.Data
 
         public DbSet<Transaction> Transactions { get; set; }
         public DbSet<CartItem> CartItems { get; set; }
-        
+        public DbSet<ProductImage> ProductImages { get; set; }
+
 
 
         protected override void OnModelCreating(ModelBuilder builder)
