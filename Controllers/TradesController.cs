@@ -89,7 +89,7 @@ namespace MarketplaceAPI.Controllers
                         t.OfferedProduct.Id,
                         t.OfferedProduct.Name,
                         Category = t.OfferedProduct.Category.Name,
-                        t.OfferedProduct.ImageUrl
+                        t.OfferedProduct.ProductImages
                     },
                     Target = new
                     {

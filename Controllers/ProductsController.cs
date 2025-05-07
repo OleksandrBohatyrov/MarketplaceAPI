@@ -74,7 +74,8 @@ namespace MarketplaceAPI.Controllers
              IsAuction = p.IsAuction,
              Status = p.Status.ToString(),
              Category = new { p.Category.Id, p.Category.Name },
-             ImageUrl = p.ImageUrl,
+             ImageUrls = p.ProductImages.Select(pi => pi.Url),
+
              Tags = p.ProductTags.Select(pt => new { pt.Tag.Id, pt.Tag.Name }),
 
              // --- новый параметр: текущая высшая ставка (если ставок нет, = MinBid или Price) ---

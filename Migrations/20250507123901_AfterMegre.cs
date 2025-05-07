@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace MarketplaceAPI.Migrations
 {
     /// <inheritdoc />
-    public partial class AddProductImages : Migration
+    public partial class AfterMegre : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -408,10 +408,10 @@ namespace MarketplaceAPI.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    RequesterId = table.Column<string>(type: "varchar(255)", nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    TargetProductId = table.Column<int>(type: "int", nullable: false),
                     OfferedProductId = table.Column<int>(type: "int", nullable: false),
-                    RequestedProductId = table.Column<int>(type: "int", nullable: false),
+                    ProposerId = table.Column<string>(type: "varchar(255)", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
                     Status = table.Column<int>(type: "int", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false)
                 },
@@ -419,8 +419,8 @@ namespace MarketplaceAPI.Migrations
                 {
                     table.PrimaryKey("PK_Trades", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Trades_AspNetUsers_RequesterId",
-                        column: x => x.RequesterId,
+                        name: "FK_Trades_AspNetUsers_ProposerId",
+                        column: x => x.ProposerId,
                         principalTable: "AspNetUsers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
@@ -431,8 +431,8 @@ namespace MarketplaceAPI.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_Trades_Products_RequestedProductId",
-                        column: x => x.RequestedProductId,
+                        name: "FK_Trades_Products_TargetProductId",
+                        column: x => x.TargetProductId,
                         principalTable: "Products",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
@@ -555,14 +555,14 @@ namespace MarketplaceAPI.Migrations
                 column: "OfferedProductId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Trades_RequestedProductId",
+                name: "IX_Trades_ProposerId",
                 table: "Trades",
-                column: "RequestedProductId");
+                column: "ProposerId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Trades_RequesterId",
+                name: "IX_Trades_TargetProductId",
                 table: "Trades",
-                column: "RequesterId");
+                column: "TargetProductId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Transactions_OrderId",
