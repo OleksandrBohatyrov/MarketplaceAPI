@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MarketplaceAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250507123901_AfterMegre")]
-    partial class AfterMegre
+    [Migration("20250507151516_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
