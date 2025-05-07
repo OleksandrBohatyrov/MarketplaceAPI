@@ -49,36 +49,47 @@ namespace MarketplaceAPI.Controllers
             }
         }
 
+ [HttpGet("feed")]
+ [AllowAnonymous]
+ public IActionResult GetFeed()
+ {
+     FinalizeAuctions();
 
-        [HttpGet("feed"), AllowAnonymous]
-        public IActionResult GetFeed()
-        {
-            FinalizeAuctions();
-            var now = DateTime.UtcNow;
+     var now = DateTime.UtcNow;
+     var products = _db.Products
+         .Where(p => p.Status == ProductStatus.Available)
+         .Where(p => !p.IsAuction || (p.IsAuction && p.EndsAt > now))
+         .Include(p => p.Category)
+         .Include(p => p.Seller)
+         .Include(p => p.ProductTags).ThenInclude(pt => pt.Tag)
+         .Select(p => new {
+             p.Id,
+             p.Name,
+             // оригинальный «фикс. цена» оставляем в поле Price на случай «купить сразу»
+             p.Price,
+             // стартовая цена аукциона
+             MinBid = p.MinBid,
+             // время окончания
+             EndsAt = p.EndsAt,
+             IsAuction = p.IsAuction,
+             Status = p.Status.ToString(),
+             Category = new { p.Category.Id, p.Category.Name },
+             ImageUrl = p.ImageUrl,
+             Tags = p.ProductTags.Select(pt => new { pt.Tag.Id, pt.Tag.Name }),
 
-            var products = _db.Products
-                .Where(p => p.Status == ProductStatus.Available)
-                .Where(p => !p.IsAuction || (p.IsAuction && p.EndsAt > now))
-                .Include(p => p.Category)
-                .Include(p => p.ProductTags).ThenInclude(pt => pt.Tag)
-                .Include(p => p.ProductImages)
-                .OrderByDescending(p => p.CreatedAt)
-                .Select(p => new {
-                    p.Id,
-                    p.Name,
-                    p.Price,
-                    p.IsAuction,
-                    MinBid = p.MinBid,
-                    EndsAt = p.EndsAt,
-                    Status = p.Status.ToString(),
-                    Category = new { p.Category.Id, p.Category.Name },
-                    ImageUrls = p.ProductImages.Select(pi => pi.Url),
-                    Tags = p.ProductTags.Select(pt => new { pt.Tag.Id, pt.Tag.Name })
-                })
-                .ToList();
+             // --- новый параметр: текущая высшая ставка (если ставок нет, = MinBid или Price) ---
+             CurrentBid = p.IsAuction
+               ? _db.Bids
+                   .Where(b => b.ProductId == p.Id)
+                   .Select(b => (decimal?)b.Amount)
+                   .Max() ?? p.MinBid ?? 0
+               : p.Price
+         })
+         .OrderByDescending(p => p.Id)
+         .ToList();
 
-            return Ok(products);
-        }
+     return Ok(products);
+ }
 
 
         [HttpGet("{id:int}"), AllowAnonymous]
