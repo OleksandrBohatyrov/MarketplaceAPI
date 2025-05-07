@@ -4,6 +4,7 @@ using MarketplaceAPI.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MarketplaceAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250507101159_AddProductImages")]
+    partial class AddProductImages
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -318,23 +321,23 @@ namespace MarketplaceAPI.Migrations
                     b.Property<int>("OfferedProductId")
                         .HasColumnType("int");
 
-                    b.Property<string>("ProposerId")
+                    b.Property<int>("RequestedProductId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RequesterId")
                         .IsRequired()
                         .HasColumnType("varchar(255)");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
-                    b.Property<int>("TargetProductId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
                     b.HasIndex("OfferedProductId");
 
-                    b.HasIndex("ProposerId");
+                    b.HasIndex("RequestedProductId");
 
-                    b.HasIndex("TargetProductId");
+                    b.HasIndex("RequesterId");
 
                     b.ToTable("Trades");
                 });
@@ -610,23 +613,23 @@ namespace MarketplaceAPI.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MarketplaceAPI.Models.ApplicationUser", "Proposer")
+                    b.HasOne("MarketplaceAPI.Models.Product", "RequestedProduct")
                         .WithMany()
-                        .HasForeignKey("ProposerId")
+                        .HasForeignKey("RequestedProductId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MarketplaceAPI.Models.Product", "TargetProduct")
+                    b.HasOne("MarketplaceAPI.Models.ApplicationUser", "Requester")
                         .WithMany()
-                        .HasForeignKey("TargetProductId")
+                        .HasForeignKey("RequesterId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("OfferedProduct");
 
-                    b.Navigation("Proposer");
+                    b.Navigation("RequestedProduct");
 
-                    b.Navigation("TargetProduct");
+                    b.Navigation("Requester");
                 });
 
             modelBuilder.Entity("MarketplaceAPI.Models.Transaction", b =>
