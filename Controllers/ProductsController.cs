@@ -182,7 +182,8 @@ namespace MarketplaceAPI.Controllers
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized();
 
-            string imageUrl = null;
+            //string imageUrl = null;
+            string imageUrl = string.Empty;
             if (dto.Image != null && dto.Image.Length > 0)
             {
                 var key = $"{Guid.NewGuid()}_{dto.Image.FileName}";
@@ -307,9 +308,9 @@ namespace MarketplaceAPI.Controllers
             public decimal Price { get; set; }
             public int CategoryId { get; set; }
             public List<int> TagIds { get; set; } = new();
-            public IFormFile Image { get; set; }
+            public IFormFile? Image { get; set; }
+            //public IFormFile Image { get; set; }
 
-            
             public bool IsAuction { get; set; }
             public decimal? MinBid { get; set; }
             public DateTime? EndsAt { get; set; }
