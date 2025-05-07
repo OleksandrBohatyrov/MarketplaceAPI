@@ -1,7 +1,6 @@
 ﻿// File: Controllers/ProductsController.cs
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Claims;
@@ -36,36 +35,80 @@ namespace MarketplaceAPI.Controllers
             _bucketName = config["AWS:BucketName"];
         }
 
+        // === Вспомогательный метод: помечает истёкшие аукционы как проданные ===
+        private void FinalizeAuctions()
+        {
+            var now = DateTime.UtcNow;
+            var expired = _db.Products
+                .Where(p => p.IsAuction
+                         && p.EndsAt <= now
+                         && p.Status == ProductStatus.Available)
+                .ToList();
+
+            if (expired.Any())
+            {
+                foreach (var p in expired)
+                    p.Status = ProductStatus.Sold;
+                _db.SaveChanges();
+            }
+        }
+
         // GET /api/products/feed
         [HttpGet("feed")]
         [AllowAnonymous]
         public IActionResult GetFeed()
         {
+            FinalizeAuctions();
+
+            var now = DateTime.UtcNow;
             var products = _db.Products
-               .Where(p => p.Status == ProductStatus.Available)       // <-- фильтр по доступности
-      .Include(p => p.Category)
-      .Include(p => p.Seller)
-    .Include(p => p.ProductTags).ThenInclude(pt => pt.Tag)
-     .OrderByDescending(p => p.CreatedAt)
-       .Select(p => new {
-    p.Id,
-    p.Name,
-    p.Price,
-    p.Status,
-    Category = new { p.Category.Id, p.Category.Name },
-    ImageUrl = p.ImageUrl,
-    Tags = p.ProductTags.Select(pt => new { pt.Tag.Id, pt.Tag.Name })
-      })
-       .ToList();
+
+                // 1) только Available
+                .Where(p => p.Status == ProductStatus.Available)
+
+                // 2) Оставить либо обычные товары, либо активные аукционы
+                .Where(p =>
+                    !p.IsAuction
+                    || (p.IsAuction && p.EndsAt > now)
+                )
+
+                // 3) Жадная загрузка зависимостей
+                .Include(p => p.Category)
+                .Include(p => p.Seller)
+                .Include(p => p.ProductTags).ThenInclude(pt => pt.Tag)
+
+                // 4) Сортировка
+                .OrderByDescending(p => p.CreatedAt)
+
+                // 5) Проекция в DTO
+                .Select(p => new {
+                    p.Id,
+                    p.Name,
+                    // для «купить сразу» отображаем p.Price;
+                    // для аукциона фронт сам возьмёт p.MinBid и список ставок
+                    p.Price,
+
+                    // флаг и данные аукциона
+                    p.IsAuction,
+                    MinBid = p.MinBid,
+                    EndsAt = p.EndsAt,
+
+                    Status = p.Status.ToString(),
+                    Category = new { p.Category.Id, p.Category.Name },
+                    ImageUrl = p.ImageUrl,
+                    Tags = p.ProductTags.Select(pt => new { pt.Tag.Id, pt.Tag.Name })
+                })
+                .ToList();
 
             return Ok(products);
         }
 
-        // GET /api/products/my  AND  /api/products/my-products
+        // GET /api/products/my-products
         [HttpGet("my-products")]
         [Authorize]
         public IActionResult GetMyProducts()
         {
+            FinalizeAuctions();
             var sellerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             var list = _db.Products
@@ -73,11 +116,15 @@ namespace MarketplaceAPI.Controllers
                 .Include(p => p.Category)
                 .Include(p => p.ProductTags).ThenInclude(pt => pt.Tag)
                 .OrderByDescending(p => p.CreatedAt)
-                .Select(p => new {
+                .Select(p => new
+                {
                     p.Id,
                     p.Name,
                     p.Price,
-                    Status = p.Status.ToString(),              
+                    p.IsAuction,
+                    MinBid = p.MinBid,
+                    EndsAt = p.EndsAt,
+                    Status = p.Status.ToString(),
                     Category = new { p.Category.Id, p.Category.Name },
                     Tags = p.ProductTags.Select(pt => new { pt.Tag.Id, pt.Tag.Name })
                 })
@@ -86,11 +133,13 @@ namespace MarketplaceAPI.Controllers
             return Ok(list);
         }
 
-        // GET /api/products/{id}  — сработает только если {id} целое число
+        // GET /api/products/{id}
         [HttpGet("{id:int}")]
         [AllowAnonymous]
         public IActionResult GetProduct(int id)
         {
+            FinalizeAuctions();
+
             var p = _db.Products
                        .Include(x => x.Category)
                        .Include(x => x.Seller)
@@ -106,7 +155,10 @@ namespace MarketplaceAPI.Controllers
                 p.Name,
                 p.Description,
                 p.Price,
-                p.Status,
+                p.IsAuction,
+                MinBid = p.MinBid,
+                EndsAt = p.EndsAt,
+                Status = p.Status.ToString(),
                 Category = new { p.Category.Id, p.Category.Name },
                 p.ImageUrl,
                 SellerId = p.SellerId,
@@ -136,7 +188,6 @@ namespace MarketplaceAPI.Controllers
                 var key = $"{Guid.NewGuid()}_{dto.Image.FileName}";
                 using var ms = new MemoryStream();
                 await dto.Image.CopyToAsync(ms);
-
                 var putRequest = new PutObjectRequest
                 {
                     BucketName = _bucketName,
@@ -144,7 +195,6 @@ namespace MarketplaceAPI.Controllers
                     InputStream = ms,
                 };
                 await _s3.PutObjectAsync(putRequest);
-
                 imageUrl = $"https://{_bucketName}.s3.{_s3.Config.RegionEndpoint.SystemName}.amazonaws.com/{key}";
             }
 
@@ -157,7 +207,10 @@ namespace MarketplaceAPI.Controllers
                 SellerId = userId,
                 CreatedAt = DateTime.UtcNow,
                 ImageUrl = imageUrl,
-                Status = ProductStatus.Available
+                Status = ProductStatus.Available,
+                IsAuction = dto.IsAuction,
+                MinBid = dto.IsAuction ? dto.MinBid : null,
+                EndsAt = dto.IsAuction ? dto.EndsAt : null
             };
 
             _db.Products.Add(product);
@@ -190,8 +243,8 @@ namespace MarketplaceAPI.Controllers
                 return BadRequest(new { message = "Max 5 tags" });
 
             var product = await _db.Products
-                                   .Include(p => p.ProductTags)
-                                   .FirstOrDefaultAsync(p => p.Id == id);
+                .Include(p => p.ProductTags)
+                .FirstOrDefaultAsync(p => p.Id == id);
             if (product == null)
                 return NotFound(new { message = "Item not found" });
 
@@ -204,6 +257,9 @@ namespace MarketplaceAPI.Controllers
             product.Description = dto.Description;
             product.Price = dto.Price;
             product.CategoryId = dto.CategoryId;
+            product.IsAuction = dto.IsAuction;
+            product.MinBid = dto.IsAuction ? dto.MinBid : null;
+            product.EndsAt = dto.IsAuction ? dto.EndsAt : null;
 
             _db.ProductTags.RemoveRange(product.ProductTags);
             if (dto.TagIds?.Any() == true)
@@ -223,7 +279,7 @@ namespace MarketplaceAPI.Controllers
             return Ok(product);
         }
 
-        // DELETE /api/products/{id}
+       
         [HttpDelete("{id:int}")]
         [Authorize]
         public async Task<IActionResult> DeleteProduct(int id)
@@ -242,14 +298,21 @@ namespace MarketplaceAPI.Controllers
             return Ok(new { message = "The item has been successfully removed" });
         }
 
+
+       
         public class ProductDto
         {
             public string Name { get; set; }
             public string Description { get; set; }
             public decimal Price { get; set; }
             public int CategoryId { get; set; }
-            public List<int> TagIds { get; set; } = new List<int>();
+            public List<int> TagIds { get; set; } = new();
             public IFormFile Image { get; set; }
+
+            
+            public bool IsAuction { get; set; }
+            public decimal? MinBid { get; set; }
+            public DateTime? EndsAt { get; set; }
         }
     }
 }

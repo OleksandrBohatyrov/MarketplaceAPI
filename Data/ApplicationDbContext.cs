@@ -15,7 +15,7 @@ namespace MarketplaceAPI.Data
         public DbSet<Tag> Tags { get; set; }
 
         public DbSet<Trade> Trades { get; set; }
-
+        public DbSet<Bid> Bids { get; set; }
         public DbSet<ProductTag> ProductTags { get; set; }
         public DbSet<Order> Orders { get; set; }
 
@@ -42,7 +42,15 @@ namespace MarketplaceAPI.Data
                 .WithMany(t => t.ProductTags)
                 .HasForeignKey(pt => pt.TagId);
 
-         
+            builder.Entity<Product>()
+        .Property(p => p.IsAuction)
+        .HasDefaultValue(false);
+
+            builder.Entity<Product>()
+                .Property(p => p.MinBid)
+                .HasColumnType("decimal(18,2)");
+
+
         }
     }
 }

@@ -185,7 +185,7 @@ using (var scope = app.Services.CreateScope())
 
     var defaultCategories = new[]
  {
-    "T-särk",
+    "T-sark",
     "Kampsun",
     "Püksid",
     "Sokid",

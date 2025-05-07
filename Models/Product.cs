@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Security.Cryptography;
 
 namespace MarketplaceAPI.Models
 {
@@ -44,5 +45,18 @@ namespace MarketplaceAPI.Models
 
         // теперь EF хранит этот enum как INT (0 = Available, 1 = Sold)
         public ProductStatus Status { get; set; } = ProductStatus.Available;
+
+        
+        public bool IsAuction { get; set; } = false;
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? MinBid { get; set; }
+
+      
+        public DateTime? EndsAt { get; set; }
+
+        
+        public ICollection<Bid> Bids { get; set; }
+            = new List<Bid>();
     }
 }
