@@ -22,7 +22,8 @@ namespace MarketplaceAPI.Data
         public DbSet<Transaction> Transactions { get; set; }
         public DbSet<CartItem> CartItems { get; set; }
         public DbSet<ProductImage> ProductImages { get; set; }
-
+        public DbSet<Chat> Chats { get; set; }
+        public DbSet<Message> Messages { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder builder)
