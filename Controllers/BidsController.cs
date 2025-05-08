@@ -35,14 +35,11 @@ public class BidsController : ControllerBase
         if (product.EndsAt <= DateTime.UtcNow)
             return BadRequest("Auction ended");
 
-        // --- Считаем текущий максимум ставки: либо из БД, либо минимальная при старте аукциона ---
-        // EF Core корректно переведёт этот запрос в SQL
         var maxBidInDb = _db.Bids
             .Where(b => b.ProductId == dto.ProductId)
             .Select(b => (decimal?)b.Amount)
             .Max();
 
-        // Если в БД нет ставок — берём минимальную
         var currentMax = maxBidInDb ?? (product.MinBid ?? 0);
 
         if (dto.Amount <= currentMax)
@@ -63,7 +60,7 @@ public class BidsController : ControllerBase
             bid.Id,
             bid.Amount,
             bid.Timestamp,
-            Bidder = new { Id = userId } // или можно сразу вернуть полную DTO
+            Bidder = new { Id = userId } 
         });
     }
 

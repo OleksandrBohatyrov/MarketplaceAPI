@@ -20,8 +20,9 @@ namespace MarketplaceAPI.Controllers
         }
 
         // GET /api/users/me
+        [AllowAnonymous]
         [HttpGet("me")]
-        [Authorize]
+ 
         public async Task<IActionResult> GetMe()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);

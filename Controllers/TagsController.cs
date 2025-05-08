@@ -1,5 +1,6 @@
 ﻿using MarketplaceAPI.Data;
 using MarketplaceAPI.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
@@ -7,12 +8,14 @@ using System.Threading.Tasks;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class TagsController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
     public TagsController(ApplicationDbContext db) => _db = db;
 
     // GET /api/tags
+    [AllowAnonymous]
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {

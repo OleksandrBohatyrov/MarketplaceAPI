@@ -31,28 +31,19 @@ namespace MarketplaceAPI.Controllers
         public async Task<IActionResult> Propose([FromBody] TradeDto dto)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            // Загружаем оба товара
             var target = await _db.Products.FindAsync(dto.TargetProductId);
             var offered = await _db.Products.FindAsync(dto.OfferedProductId);
-
             if (target == null || offered == null)
                 return NotFound("Product not found");
-
-            // Только доступные товары
             if (target.Status != ProductStatus.Available
              || offered.Status != ProductStatus.Available)
                 return BadRequest("Cannot trade sold items");
-
-            // Нельзя предлагать обмен на свой же товар
             if (target.SellerId == userId)
                 return BadRequest("Invalid trade: you cannot propose a trade on your own item");
-
-            // Нельзя предлагать чужой товар — только тот, который принадлежит вам
             if (offered.SellerId != userId)
                 return BadRequest("Invalid trade: you can only offer your own items");
 
-            // Всё ок, создаём предложение
+            // if ok, make trade
             var trade = new Trade
             {
                 TargetProductId = dto.TargetProductId,
