@@ -49,48 +49,42 @@ namespace MarketplaceAPI.Controllers
             }
         }
 
- [HttpGet("feed")]
- [AllowAnonymous]
- public IActionResult GetFeed()
- {
-     FinalizeAuctions();
+    [HttpGet("feed")]
+    [AllowAnonymous]
+    public IActionResult GetFeed()
+    {
+        FinalizeAuctions();
 
-     var now = DateTime.UtcNow;
-     var products = _db.Products
-         .Where(p => p.Status == ProductStatus.Available)
-         .Where(p => !p.IsAuction || (p.IsAuction && p.EndsAt > now))
-         .Include(p => p.Category)
-         .Include(p => p.Seller)
-         .Include(p => p.ProductTags).ThenInclude(pt => pt.Tag)
-         .Select(p => new {
-             p.Id,
-             p.Name,
-             // оригинальный «фикс. цена» оставляем в поле Price на случай «купить сразу»
-             p.Price,
-             // стартовая цена аукциона
-             MinBid = p.MinBid,
-             // время окончания
-             EndsAt = p.EndsAt,
-             IsAuction = p.IsAuction,
-             Status = p.Status.ToString(),
-             Category = new { p.Category.Id, p.Category.Name },
-             ImageUrls = p.ProductImages.Select(pi => pi.Url),
+        var now = DateTime.UtcNow;
+        var products = _db.Products
+            .Where(p => p.Status == ProductStatus.Available)
+            .Where(p => !p.IsAuction || (p.IsAuction && p.EndsAt > now))
+            .Include(p => p.Category)
+            .Include(p => p.Seller)
+            .Include(p => p.ProductTags).ThenInclude(pt => pt.Tag)
+            .Select(p => new {
+                p.Id,
+                p.Name,
+                p.Price,
+                MinBid = p.MinBid,
+                EndsAt = p.EndsAt,
+                IsAuction = p.IsAuction,
+                Status = p.Status.ToString(),
+                Category = new { p.Category.Id, p.Category.Name },
+                ImageUrls = p.ProductImages.Select(pi => pi.Url),
+            Tags = p.ProductTags.Select(pt => new { pt.Tag.Id, pt.Tag.Name }),
+                CurrentBid = p.IsAuction
+                ? _db.Bids
+                    .Where(b => b.ProductId == p.Id)
+                    .Select(b => (decimal?)b.Amount)
+                    .Max() ?? p.MinBid ?? 0
+                : p.Price
+            })
+            .OrderByDescending(p => p.Id)
+            .ToList();
 
-             Tags = p.ProductTags.Select(pt => new { pt.Tag.Id, pt.Tag.Name }),
-
-             // --- новый параметр: текущая высшая ставка (если ставок нет, = MinBid или Price) ---
-             CurrentBid = p.IsAuction
-               ? _db.Bids
-                   .Where(b => b.ProductId == p.Id)
-                   .Select(b => (decimal?)b.Amount)
-                   .Max() ?? p.MinBid ?? 0
-               : p.Price
-         })
-         .OrderByDescending(p => p.Id)
-         .ToList();
-
-     return Ok(products);
- }
+        return Ok(products);
+    }
 
 
         [HttpGet("{id:int}"), AllowAnonymous]
@@ -160,7 +154,6 @@ namespace MarketplaceAPI.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // Проверка картинок
             if (dto.Images == null || dto.Images.Count == 0 || dto.Images.Count > 4)
                 return BadRequest(new { message = "Vali 1–4 pilti." });
 
@@ -168,7 +161,6 @@ namespace MarketplaceAPI.Controllers
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized();
 
-            // 1) создаём продукт
             var product = new Product
             {
                 Name = dto.Name,
@@ -185,7 +177,6 @@ namespace MarketplaceAPI.Controllers
             _db.Products.Add(product);
             await _db.SaveChangesAsync();
 
-            // 2) теги по именам (до 5)
             foreach (var raw in dto.TagNames
                                   .Select(n => n.Trim())
                                   .Where(n => !string.IsNullOrEmpty(n))
@@ -211,7 +202,6 @@ namespace MarketplaceAPI.Controllers
             }
             await _db.SaveChangesAsync();
 
-            // 3) сохраняем изображения в S3 + БД
             foreach (var file in dto.Images)
             {
                 var key = $"{Guid.NewGuid()}_{file.FileName}";
