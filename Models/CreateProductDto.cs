@@ -1,5 +1,4 @@
-﻿// Models/CreateProductDto.cs
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace MarketplaceAPI.Models

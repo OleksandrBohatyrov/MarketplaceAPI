@@ -1,5 +1,4 @@
-﻿
-namespace MarketplaceAPI.Models
+﻿namespace MarketplaceAPI.Models
  
 {
     public class ProductTag

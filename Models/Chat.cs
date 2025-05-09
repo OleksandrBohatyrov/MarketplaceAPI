@@ -10,7 +10,6 @@ namespace MarketplaceAPI.Models
         [Key]
         public int Id { get; set; }
 
-        // участники
         [Required]
         public string UserAId { get; set; }
         [ForeignKey(nameof(UserAId))]

@@ -61,9 +61,8 @@ namespace MarketplaceAPI.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
-                return NotFound(new { message = "Пользователь не найден" });
+                return NotFound(new { message = "Kasutajat ei leitud" });
 
-            // Удаляем все продукты пользователя
             var products = await _db.Products
                 .Where(p => p.SellerId == userId)
                 .ToListAsync();
@@ -73,15 +72,13 @@ namespace MarketplaceAPI.Controllers
                 await _db.SaveChangesAsync();
             }
 
-            // Удаляем пользователя
             var result = await _userManager.DeleteAsync(user);
             if (!result.Succeeded)
                 return BadRequest(result.Errors);
 
-            // Выход из системы
             await _signInManager.SignOutAsync();
 
-            return Ok(new { message = "Пользователь и все его данные удалены" });
+            return Ok(new { message = "Kasutaja ja kõik tema andmed on kustutatud" });
         }
     }
 }

@@ -26,7 +26,6 @@ namespace MarketplaceAPI.Controllers
             return Ok(cats);
         }
 
-        // Admin only: create new categroies
         [HttpPost]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create([FromBody] Category model)
@@ -55,7 +54,6 @@ namespace MarketplaceAPI.Controllers
             return Ok(existing);
         }
 
-        // Admin only: delte categories
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int id)

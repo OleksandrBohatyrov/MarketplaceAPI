@@ -22,7 +22,6 @@ namespace MarketplaceAPI.Controllers
             _db = db;
         }
 
-        // 1) Получить список чатов текущего пользователя
         [HttpGet]
         public async Task<IActionResult> GetChats()
         {
@@ -49,7 +48,6 @@ namespace MarketplaceAPI.Controllers
             return Ok(dto);
         }
 
-        // 2) Получить все сообщения чата
         [HttpGet("{chatId}/messages")]
         public async Task<IActionResult> GetMessages(int chatId)
         {
@@ -66,7 +64,6 @@ namespace MarketplaceAPI.Controllers
             return Ok(msgs);
         }
 
-        // 3) Создать (или вернуть существующий) чат по товару
         [HttpPost("product/{productId}")]
         public async Task<IActionResult> CreateOrGetChatByProduct(int productId)
         {
@@ -91,7 +88,6 @@ namespace MarketplaceAPI.Controllers
             return Ok(new { id = chat.Id });
         }
 
-        // 4) Отправить сообщение в чат
         [HttpPost("{chatId}/messages")]
         public async Task<IActionResult> SendMessage(int chatId, [FromBody] MessageDto dto)
         {
